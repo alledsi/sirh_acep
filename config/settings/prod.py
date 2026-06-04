@@ -11,6 +11,19 @@ from .base import env
 
 DEBUG = False
 
+# ---------- CSRF ----------
+# Django 4+ exige que CSRF_TRUSTED_ORIGINS contienne le schéma (http/https).
+# On le construit automatiquement à partir des ALLOWED_HOSTS du .env, plus le
+# port d'application si défini. Variable optionnelle APP_PORT.
+APP_PORT = env('APP_PORT', default='')
+_scheme = 'https' if env.bool('USE_HTTPS', default=False) else 'http'
+CSRF_TRUSTED_ORIGINS = []
+for _host in ALLOWED_HOSTS:
+    if _host in ('localhost', '127.0.0.1') or _host:
+        CSRF_TRUSTED_ORIGINS.append(f'{_scheme}://{_host}')
+        if APP_PORT:
+            CSRF_TRUSTED_ORIGINS.append(f'{_scheme}://{_host}:{APP_PORT}')
+
 # ---------- Sécurité HTTP ----------
 USE_HTTPS = env.bool('USE_HTTPS', default=False)
 
