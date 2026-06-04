@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Anomalies{% endblock %}
+{% block page_title %}Anomalies — {{ scope_label }}{% endblock %}
+
+{% block content %}
+
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3">
+    <h5><i class="bi bi-exclamation-triangle"></i> Anomalies ({{ anomalies|length }})</h5>
+    <div class="btn-group btn-group-sm" role="group">
+      <a href="?statut=pending" class="btn btn-outline-success {% if only_pending %}active{% endif %}">À valider</a>
+      <a href="?statut=all" class="btn btn-outline-success {% if not only_pending %}active{% endif %}">Toutes</a>
+    </div>
+  </div>
+
+  {% if anomalies %}
+    <table class="table modern-table">
+      <thead>
+        <tr><th>Date</th><th>Employé</th><th>Type</th><th>Détail</th><th>Sévérité</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for a in anomalies %}
+          <tr {% if a.severity == 3 %}class="anomaly-row critical"{% elif a.severity == 2 %}class="anomaly-row"{% endif %}>
+            <td>{{ a.time_entry.work_date|date:'d/m/Y' }}</td>
+            <td>
+              <span class="avatar">{{ a.time_entry.employee.initials }}</span>
+              {{ a.time_entry.employee.user.get_full_name|default:a.time_entry.employee.user.matricule }}
+            </td>
+            <td>
+              {% if a.anomaly_type == 'LATE' %}<span class="badge bg-warning text-dark">Retard</span>
+              {% elif a.anomaly_type == 'NO_DEPARTURE' %}<span class="badge bg-danger">Pas de départ</span>
+              {% elif a.anomaly_type == 'LONG_BREAK' %}<span class="badge bg-info">Pause longue</span>
+              {% elif a.anomaly_type == 'UNKNOWN_IP' %}<span class="badge bg-warning text-dark">IP inconnue</span>
+              {% elif a.anomaly_type == 'INCOHERENCE_BUREAU' %}<span class="badge bg-info">Bureau ≠</span>{% endif %}
+            </td>
+            <td><small>{{ a.description }}</small></td>
+            <td>
+              {% if a.severity == 3 %}★★★
+              {% elif a.severity == 2 %}★★
+              {% else %}★{% endif %}
+            </td>
+            <td>
+              {% if a.is_acknowledged %}
+                <span class="badge bg-success">Validée</span>
+                <small class="d-block text-muted">par {{ a.acknowledged_by.get_full_name|default:a.acknowledged_by.matricule }}</small>
+              {% else %}
+                <span class="badge bg-warning text-dark">En attente</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if not a.is_acknowledged %}
+                <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-success">Valider</a>
+              {% else %}
+                <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-check-circle" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-0 mt-2">{% if only_pending %}Aucune anomalie en attente.{% else %}Aucune anomalie enregistrée.{% endif %}</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

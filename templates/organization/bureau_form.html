@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} bureau{% endblock %}
+{% block page_title %}{% if object %}Modifier le bureau{% else %}Nouveau bureau{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-10 mx-auto">
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="card-section">
+        <h5><i class="bi bi-geo-alt"></i> Informations du bureau</h5>
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label">{{ form.agence.label }}</label>
+            {{ form.agence }}
+            {% if form.agence.errors %}<div class="text-danger small">{{ form.agence.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.code.label }}</label>
+            {{ form.code }}
+            {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check pb-2">
+              {{ form.is_active }}
+              <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Bureau actif</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ form.name.label }}</label>
+            {{ form.name }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ form.address.label }}</label>
+            {{ form.address }}
+          </div>
+        </div>
+      </div>
+
+      <div class="card-section">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h5 class="mb-0"><i class="bi bi-shield-check"></i> Plages IP rattachées à ce bureau</h5>
+          <small class="text-muted">Ajoutez autant de plages que nécessaire (ex : <code>192.168.1.0/24</code> + <code>192.168.2.0/24</code>)</small>
+        </div>
+        <div class="alert alert-light border small mb-3">
+          <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+          À chaque pointage depuis l'une de ces plages, le bureau de connexion sera automatiquement résolu vers <strong>{{ object.name|default:'ce bureau' }}</strong>. Les IPs en dehors déclenchent une anomalie <code>UNKNOWN_IP</code>.
+        </div>
+
+        {{ ip_formset.management_form }}
+        {% if ip_formset.non_form_errors %}<div class="alert alert-danger small">{{ ip_formset.non_form_errors }}</div>{% endif %}
+
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th style="width: 35%;">Plage IP <span class="text-danger">*</span></th>
+              <th style="width: 40%;">Description</th>
+              <th style="width: 15%;">Active</th>
+              <th style="width: 10%;">Supprimer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ipform in ip_formset %}
+              {% for h in ipform.hidden_fields %}{{ h }}{% endfor %}
+              <tr>
+                <td>
+                  {{ ipform.ip_pattern }}
+                  {% if ipform.ip_pattern.errors %}<div class="text-danger small">{{ ipform.ip_pattern.errors }}</div>{% endif %}
+                </td>
+                <td>{{ ipform.description }}</td>
+                <td>
+                  <div class="form-check">{{ ipform.is_active }}</div>
+                </td>
+                <td>
+                  {% if ipform.instance.pk %}
+                    <div class="form-check">
+                      {{ ipform.DELETE }}
+                      <label class="form-check-label small text-danger" for="{{ ipform.DELETE.id_for_label }}">Supprimer</label>
+                    </div>
+                  {% else %}
+                    <em class="text-muted small">—</em>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <small class="text-muted">
+          <i class="bi bi-info-circle"></i>
+          Pour ajouter plus de plages après cette première ligne, enregistrez d'abord, puis modifiez le bureau et ajoutez à nouveau.
+        </small>
+      </div>
+
+      <div class="card-section">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-check-circle"></i> Enregistrer</button>
+          <a href="{% url 'organization:bureau_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

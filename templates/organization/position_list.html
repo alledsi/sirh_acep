@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Postes{% endblock %}
+{% block page_title %}Postes / Fonctions{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h5><i class="bi bi-person-badge"></i> Postes ({{ paginator.count|default:positions|length }})</h5>
+    <a href="{% url 'organization:position_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouveau poste
+    </a>
+  </div>
+
+  {% if positions %}
+  <table class="table modern-table">
+    <thead><tr><th>Intitulé</th><th>Description</th><th></th></tr></thead>
+    <tbody>
+      {% for p in positions %}
+        <tr>
+          <td><strong>{{ p.title }}</strong></td>
+          <td>{{ p.description|truncatechars:120|default:'—' }}</td>
+          <td>
+            <a href="{% url 'organization:position_update' p.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'organization:position_delete' p.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-inbox" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun poste enregistré.</p>
+      <a href="{% url 'organization:position_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">Créer le premier poste</a>
+    </div>
+  {% endif %}
+
+  {% include 'organization/_pagination.html' %}
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Bureaux{% endblock %}
+{% block page_title %}Bureaux{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h5><i class="bi bi-geo-alt"></i> Bureaux ({{ paginator.count|default:bureaux|length }})</h5>
+    <a href="{% url 'organization:bureau_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouveau bureau
+    </a>
+  </div>
+
+  <div class="alert alert-light border small">
+    <i class="bi bi-shield-check" style="color: var(--acep-green);"></i>
+    <strong>Résolution IP → Bureau :</strong> à chaque pointage, l'IP source de la requête est comparée aux plages déclarées ici. Un bureau peut avoir <strong>plusieurs plages IP</strong> (ex : <code>192.168.1.0/24</code> et <code>192.168.2.0/24</code>). Les IPs non rattachées déclenchent une anomalie.
+  </div>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+      <select name="mutuelle" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Toutes les mutuelles</option>
+        {% for m in mutuelles %}
+          <option value="{{ m.pk }}" {% if selected_mutuelle == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="agence" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Toutes les agences</option>
+        {% for a in agences %}
+          <option value="{{ a.pk }}" {% if selected_agence == a.pk|stringformat:'s' %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% if bureaux %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Nom</th>
+          <th>Agence</th>
+          <th>Mutuelle</th>
+          <th>Plages IP rattachées</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bureaux %}
+          <tr>
+            <td><code>{{ b.code }}</code></td>
+            <td><strong><a href="{% url 'organization:bureau_detail' b.pk %}">{{ b.name }}</a></strong></td>
+            <td>{{ b.agence.code }}</td>
+            <td><span class="hierarchy-chip"><i class="bi bi-bank"></i> {{ b.agence.mutuelle.name }}</span></td>
+            <td>
+              {% for mapping in b.ip_mappings.all %}
+                {% if mapping.is_active %}
+                  <code>{{ mapping.ip_pattern }}</code>{% if not forloop.last %} · {% endif %}
+                {% endif %}
+              {% empty %}
+                <em class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Aucune plage IP</em>
+              {% endfor %}
+            </td>
+            <td>
+              {% if b.is_active %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Inactif</span>{% endif %}
+            </td>
+            <td>
+              <a href="{% url 'organization:bureau_detail' b.pk %}" class="btn btn-sm btn-outline-secondary" title="Voir"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'organization:bureau_update' b.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'organization:bureau_delete' b.pk %}" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-inbox" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun bureau enregistré.</p>
+      <a href="{% url 'organization:bureau_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+        <i class="bi bi-plus-lg"></i> Créer le premier bureau
+      </a>
+    </div>
+  {% endif %}
+
+  {% include 'organization/_pagination.html' %}
+</div>
+{% endblock %}

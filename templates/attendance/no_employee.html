@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Aucune fiche employé{% endblock %}
+{% block page_title %}Aucune fiche employé{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card-section text-center">
+      <i class="bi bi-person-x-fill text-warning" style="font-size: 3rem;"></i>
+      <h4 class="mt-3">Votre compte n'est pas rattaché à un employé</h4>
+      <p class="text-muted">
+        Pour pouvoir pointer, votre matricule <code>{{ user.matricule }}</code> doit être associé à une fiche employé
+        (Bureau, Direction, Poste, etc.).
+      </p>
+
+      {% if user_has_global_access %}
+        <div class="alert alert-light border text-start">
+          <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+          <strong>Vous êtes RH/DG :</strong> rendez-vous dans <strong>Employés → Nouvel employé</strong> et créez la fiche correspondant à votre compte (en utilisant le matricule <code>{{ user.matricule }}</code>).
+        </div>
+        <a href="{% url 'employees:employee_create' %}" class="btn-acep" style="width:auto; padding:8px 18px;">
+          <i class="bi bi-plus-lg"></i> Créer ma fiche employé
+        </a>
+        <a href="{% url 'employees:employee_list' %}" class="btn btn-outline-secondary">Liste des employés</a>
+      {% else %}
+        <div class="alert alert-warning text-start">
+          <i class="bi bi-exclamation-triangle"></i>
+          Contactez la <strong>Direction des Ressources Humaines</strong> pour qu'elle crée votre fiche employé.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

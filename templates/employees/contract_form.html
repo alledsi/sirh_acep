@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} contrat{% endblock %}
+{% block page_title %}{% if object %}Modifier le contrat{% else %}Nouveau contrat{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card-section">
+      <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.employee.label }}</label>
+            {{ form.employee }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.contract_type.label }}</label>
+            {{ form.contract_type }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.weekly_hours.label }}</label>
+            {{ form.weekly_hours }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.start_date.label }}</label>
+            {{ form.start_date }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.end_date.label }}</label>
+            {{ form.end_date }}
+            <small class="text-muted">Vide pour CDI</small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.salary_gross.label }}</label>
+            {{ form.salary_gross }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ form.notes.label }}</label>
+            {{ form.notes }}
+          </div>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-check-circle"></i> Enregistrer</button>
+          <a href="javascript:history.back()" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

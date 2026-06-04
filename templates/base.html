@@ -1,0 +1,182 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Pointage{% endblock %} — ACEP</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☝️</text></svg>">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="brand">
+    <i class="bi bi-hand-index-thumb-fill finger-icon"></i>
+    <div>
+      <span class="name">POINTAGE</span>
+      <small>ACEP Sunu Moomel</small>
+    </div>
+  </div>
+
+  <div class="nav-section">Mon espace <span class="role-tag">Agent</span></div>
+  <a href="{% url 'core:home' %}" class="{% if request.resolver_match.url_name == 'home' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-house-door"></i><span>Tableau de bord</span>
+  </a>
+  <a href="{% url 'attendance:pointer' %}" class="{% if request.resolver_match.url_name == 'pointer' %}active{% endif %}">
+    <i class="bi bi-hand-index-thumb finger-icon"></i><span>Pointer</span>
+  </a>
+  <a href="{% url 'attendance:historique' %}" class="{% if request.resolver_match.url_name == 'historique' %}active{% endif %}">
+    <i class="bi bi-calendar3"></i><span>Mon historique</span>
+  </a>
+  <a href="{% url 'employees:my_profile' %}" class="{% if request.resolver_match.url_name == 'my_profile' or 'password_change' in request.resolver_match.url_name %}active{% endif %}">
+    <i class="bi bi-person-circle"></i><span>Mon profil</span>
+  </a>
+
+  {% if user_is_directeur %}
+  <div class="nav-section">Direction <span class="role-tag">Directeur</span></div>
+  <a href="{% url 'reporting:directeur_dashboard' %}" class="{% if request.resolver_match.url_name == 'directeur_dashboard' %}active{% endif %}">
+    <i class="bi bi-graph-up"></i><span>Tableau de direction</span>
+  </a>
+  <a href="{% url 'reporting:directeur_equipe' %}" class="{% if request.resolver_match.url_name == 'directeur_equipe' %}active{% endif %}">
+    <i class="bi bi-people"></i><span>Mon équipe</span>
+  </a>
+  <a href="{% url 'reporting:directeur_anomalies' %}" class="{% if request.resolver_match.url_name == 'directeur_anomalies' %}active{% endif %}">
+    <i class="bi bi-exclamation-triangle"></i><span>Anomalies de l'équipe</span>
+  </a>
+  {% endif %}
+
+  {% if user_has_global_access %}
+  <div class="nav-section">Administration <span class="role-tag">RH / DG</span></div>
+  <a href="{% url 'employees:employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name|default:'' or 'contract' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-person-vcard"></i><span>Employés</span>
+  </a>
+  <a href="{% url 'organization:mutuelle_list' %}" class="{% if 'mutuelle' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-bank"></i><span>Mutuelles</span>
+  </a>
+  <a href="{% url 'organization:agence_list' %}" class="{% if 'agence' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-building"></i><span>Agences</span>
+  </a>
+  <a href="{% url 'organization:bureau_list' %}" class="{% if 'bureau' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-geo-alt"></i><span>Bureaux</span>
+  </a>
+  <a href="{% url 'organization:direction_list' %}" class="{% if 'direction' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-diagram-2"></i><span>Directions</span>
+  </a>
+  <a href="{% url 'planning:edit' %}" class="{% if 'planning' in request.resolver_match.namespace|default:'' %}active{% endif %}">
+    <i class="bi bi-calendar2-week"></i><span>Plannings &amp; horaires</span>
+  </a>
+  <a href="{% url 'reporting:rh_stats' %}" class="{% if request.resolver_match.url_name == 'rh_stats' %}active{% endif %}">
+    <i class="bi bi-bar-chart"></i><span>Statistiques</span>
+  </a>
+  <a href="{% url 'reporting:anomaly_list' %}" class="{% if request.resolver_match.url_name == 'anomaly_list' %}active{% endif %}">
+    <i class="bi bi-exclamation-octagon"></i><span>Anomalies globales</span>
+  </a>
+  <a href="/admin/" class="text-muted"><i class="bi bi-shield-lock"></i><span>Admin Django</span></a>
+  {% endif %}
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <strong style="color: var(--acep-green-dark);">{% block page_title %}Tableau de bord{% endblock %}</strong>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="role-badges">
+        {% if user_is_agent %}<span class="badge bg-success"><i class="bi bi-person"></i> Agent</span>{% endif %}
+        {% if user_is_directeur %}<span class="badge bg-primary"><i class="bi bi-briefcase"></i> Directeur</span>{% endif %}
+        {% if user_is_rh %}<span class="badge bg-warning text-dark"><i class="bi bi-shield-lock"></i> RH</span>{% endif %}
+        {% if user_is_dg %}<span class="badge bg-dg"><i class="bi bi-star-fill"></i> DG</span>{% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <div class="avatar">{{ user.first_name|first|default:'?' }}{{ user.last_name|first|default:'' }}</div>
+        <div>
+          <div style="font-size: 0.9rem; font-weight: 600;">{{ user.get_full_name|default:user.matricule }}</div>
+          <small class="text-muted">Mat. {{ user.matricule }}</small>
+        </div>
+        <form method="post" action="{% url 'core:logout' %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Déconnexion">
+            <i class="bi bi-power"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% if user.is_authenticated and todays_birthdays %}
+  <div class="modal fade" id="birthdayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content" style="border: none; border-radius: 16px; overflow: hidden;">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--acep-green), var(--acep-green-dark)); color: white; border: none;">
+          <h4 class="modal-title">🎉 Joyeux anniversaire !</h4>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body" style="padding: 30px;">
+          <p class="text-center text-muted mb-4">
+            Aujourd'hui, l'équipe ACEP célèbre l'anniversaire de
+            {% if todays_birthdays|length == 1 %}<strong>{{ todays_birthdays.0.user.get_full_name|default:todays_birthdays.0.user.matricule }}</strong>
+            {% else %}<strong>{{ todays_birthdays|length }} collègues</strong>{% endif %} :
+          </p>
+          <div class="row g-3">
+            {% for emp in todays_birthdays %}
+              <div class="col-md-6">
+                <div class="d-flex align-items-center gap-3 p-3" style="background: var(--acep-green-light); border-radius: 12px;">
+                  {% if emp.photo %}
+                    <img src="{{ emp.photo.url }}" alt="" style="width:60px; height:60px; border-radius:50%; object-fit:cover;">
+                  {% else %}
+                    <div class="avatar avatar-lg" style="width:60px; height:60px; font-size: 1.2rem;">{{ emp.initials }}</div>
+                  {% endif %}
+                  <div>
+                    <strong style="color: var(--acep-green-dark);">{{ emp.user.get_full_name|default:emp.user.matricule }}</strong>
+                    <small class="d-block text-muted">{{ emp.position }}</small>
+                    <small class="d-block text-muted">{{ emp.bureau.name }} · {{ emp.direction.name }}</small>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <p class="text-center mt-4 mb-0">
+            <em>« Tous nos vœux de bonheur et de succès pour cette nouvelle année. »</em>
+          </p>
+        </div>
+        <div class="modal-footer" style="border: none;">
+          <button type="button" class="btn-acep" style="width:auto; padding:8px 20px;" data-bs-dismiss="modal">
+            <i class="bi bi-check-circle"></i> Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Le serveur ne nous envoie le modal qu'au premier rendu post-login.
+    // Il suffit donc de l'afficher automatiquement à chaque fois qu'il est présent.
+    (function() {
+      const modalEl = document.getElementById('birthdayModal');
+      if (modalEl) {
+        new bootstrap.Modal(modalEl).show();
+      }
+    })();
+  </script>
+{% endif %}
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

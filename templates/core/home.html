@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Tableau de bord{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block content %}
+
+<div class="affectation-banner mb-4">
+  <i class="bi bi-info-circle-fill" style="color: var(--acep-green);"></i>
+  <strong>MVP complet — tous les modules sont actifs.</strong>
+  Organisation, Employés, Pointage, Plannings et Reporting fonctionnent. Le Directeur consulte sa direction et valide les anomalies, la RH/DG voit les statistiques globales.
+</div>
+
+{% if user.is_authenticated and user.is_agent and not has_employee %}
+  <div class="alert alert-warning mb-4">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Votre compte n'est pas encore rattaché à une fiche employé.</strong>
+    Pour pouvoir pointer, créez votre fiche dans
+    <a href="{% url 'employees:employee_create' %}">Employés → Nouvel employé</a>
+    en réutilisant votre matricule <code>{{ user.matricule }}</code>.
+  </div>
+{% endif %}
+
+{% if user_has_global_access and stats %}
+<div class="row mb-3">
+  <div class="col-md-2 col-6">
+    <div class="stat-card text-center">
+      <div class="icon mx-auto" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-person-vcard"></i></div>
+      <p class="value">{{ stats.employees }}</p>
+      <p class="label">Employés actifs</p>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card text-center">
+      <div class="icon mx-auto" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-bank"></i></div>
+      <p class="value">{{ stats.mutuelles }}</p>
+      <p class="label">Mutuelles</p>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card text-center">
+      <div class="icon mx-auto" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-building"></i></div>
+      <p class="value">{{ stats.agences }}</p>
+      <p class="label">Agences</p>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card text-center">
+      <div class="icon mx-auto" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-geo-alt"></i></div>
+      <p class="value">{{ stats.bureaux }}</p>
+      <p class="label">Bureaux</p>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card text-center">
+      <div class="icon mx-auto" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-diagram-2"></i></div>
+      <p class="value">{{ stats.directions }}</p>
+      <p class="label">Directions</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5><i class="bi bi-person-check"></i> Bienvenue, {{ user.first_name|default:user.matricule }} !</h5>
+      <p>Vous êtes connecté(e) avec succès.</p>
+      <table class="table">
+        <tr><th style="width: 35%;">Matricule</th><td>{{ user.matricule }}</td></tr>
+        <tr><th>Nom complet</th><td>{{ user.get_full_name|default:'—' }}</td></tr>
+        <tr><th>E-mail</th><td>{{ user.email|default:'—' }}</td></tr>
+        <tr>
+          <th>Rôles attribués</th>
+          <td>
+            {% if user.roles %}
+              {% for role in user.roles %}
+                <span class="badge bg-success">{{ role }}</span>
+              {% endfor %}
+            {% else %}
+              <em class="text-muted">Aucun rôle attribué — contactez la RH</em>
+            {% endif %}
+          </td>
+        </tr>
+        <tr><th>Dernière connexion</th><td>{{ user.last_login|date:'d/m/Y H:i'|default:'Première connexion' }}</td></tr>
+      </table>
+      <a href="{% url 'core:password_change' %}" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-shield-lock"></i> Changer mon mot de passe
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5><i class="bi bi-list-check"></i> Prochaines étapes (sprints à venir)</h5>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item">
+          <strong>Sprint 1 — Organisation :</strong> Mutuelles, Agences, Bureaux, Directions, mappings IP → Bureau.
+        </li>
+        <li class="list-group-item">
+          <strong>Sprint 2 — Employés :</strong> Fiches employés, contrats, affectations.
+        </li>
+        <li class="list-group-item">
+          <strong>Sprint 3 — Pointage :</strong> Arrivée, pause, départ, résolution IP, détection d'anomalies.
+        </li>
+        <li class="list-group-item">
+          <strong>Sprint 4 — Planning :</strong> Horaires Lun-Ven, gestion samedi par semaine.
+        </li>
+        <li class="list-group-item">
+          <strong>Sprint 5 — Reporting :</strong> Dashboards Directeur, statistiques RH.
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

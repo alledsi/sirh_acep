@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} poste{% endblock %}
+{% block page_title %}{% if object %}Modifier le poste{% else %}Nouveau poste{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card-section">
+      <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="mb-3">
+          <label class="form-label">{{ form.title.label }}</label>
+          {{ form.title }}
+          {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{{ form.description.label }}</label>
+          {{ form.description }}
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-check-circle"></i> Enregistrer</button>
+          <a href="{% url 'organization:position_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

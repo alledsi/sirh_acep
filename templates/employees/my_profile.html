@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load sirh_extras %}
+
+{% block title %}Mon profil{% endblock %}
+{% block page_title %}Mon profil{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card-section text-center">
+      {% if employee.photo %}
+        <img src="{{ employee.photo.url }}" alt="" style="width:120px; height:120px; border-radius:50%; object-fit:cover;" class="mb-3">
+      {% else %}
+        <div class="avatar avatar-lg mx-auto mb-3">{{ employee.initials }}</div>
+      {% endif %}
+      <h4>{{ employee.user.get_full_name|default:employee.user.matricule }}</h4>
+      <p class="text-muted">{{ employee.position }}</p>
+
+      <div class="role-badges mb-3">
+        {% if user_is_agent %}<span class="badge bg-success"><i class="bi bi-person"></i> Agent</span>{% endif %}
+        {% if user_is_directeur %}<span class="badge bg-primary"><i class="bi bi-briefcase"></i> Directeur</span>{% endif %}
+        {% if user_is_rh %}<span class="badge bg-warning text-dark"><i class="bi bi-shield-lock"></i> RH</span>{% endif %}
+        {% if user_is_dg %}<span class="badge bg-dg"><i class="bi bi-star-fill"></i> DG</span>{% endif %}
+      </div>
+
+      <hr>
+      <div class="text-start">
+        <p class="mb-1"><i class="bi bi-hash"></i> <strong>Matricule :</strong> <code>{{ employee.user.matricule }}</code></p>
+        <p class="mb-1"><i class="bi bi-envelope"></i> {{ employee.user.email }}</p>
+        {% if employee.user.phone %}<p class="mb-1"><i class="bi bi-telephone"></i> {{ employee.user.phone }}</p>{% endif %}
+        <p class="mb-1"><i class="bi bi-calendar-check"></i> Embauché(e) le {{ employee.hire_date|date:'d/m/Y' }}</p>
+        {% if employee.birth_date %}<p class="mb-1"><i class="bi bi-cake2"></i> Né(e) le {{ employee.birth_date|date:'d/m' }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card-section">
+      <h5><i class="bi bi-bookmark-check"></i> Mon affectation</h5>
+      <table class="table">
+        <tr><th style="width:35%;">Mutuelle</th><td>{{ employee.mutuelle.name }}</td></tr>
+        <tr><th>Agence</th><td>{{ employee.agence.name }}</td></tr>
+        <tr><th>Bureau d'affectation</th><td><strong>{{ employee.bureau.name }}</strong> <small class="text-muted">— {{ employee.bureau.code }}</small></td></tr>
+        <tr><th>Direction</th><td>{{ employee.direction.name }}</td></tr>
+        <tr><th>Poste</th><td>{{ employee.position }}</td></tr>
+      </table>
+    </div>
+
+    <div class="card-section">
+      <h5><i class="bi bi-calendar2-week"></i> Mon planning</h5>
+      <div class="alert alert-light border small">
+        <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+        Planning ACEP appliqué à tous les employés. Vos arrivées sont comparées à ces horaires pour détecter les retards (tolérance {{ planning.tolerance_minutes }} min).
+      </div>
+      <table class="table table-sm align-middle">
+        <thead style="background:#f8f9fa;">
+          <tr><th>Jour</th><th>Horaires</th><th>Pause</th><th>Statut</th></tr>
+        </thead>
+        <tbody>
+          {% for d in daily_schedules %}
+            <tr {% if d.mode == 'NOT_WORKED' %}style="opacity:0.55;"{% endif %}>
+              <td><strong>{{ d.get_day_of_week_display }}</strong></td>
+              <td>{% if d.start_time %}{{ d.start_time|time:'H:i' }} → {{ d.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
+              <td>{% if d.break_start %}{{ d.break_start|time:'H:i' }} → {{ d.break_end|time:'H:i' }}{% else %}—{% endif %}</td>
+              <td>
+                {% if d.mode == 'MANDATORY' %}<span class="badge bg-success">Travaillé</span>
+                {% elif d.mode == 'OPTIONAL' %}<span class="badge bg-warning text-dark">Optionnel (planning hebdo)</span>
+                {% else %}<span class="badge bg-secondary">Repos</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="row g-3 small mt-1">
+        <div class="col-md-4"><i class="bi bi-stopwatch" style="color: var(--acep-green);"></i> <strong>Tolérance retard :</strong> {{ planning.tolerance_minutes }} min</div>
+        <div class="col-md-4"><i class="bi bi-cup-hot" style="color: var(--acep-green);"></i> <strong>Pause max :</strong> {{ planning.max_break_duration|hm }}</div>
+        <div class="col-md-4"><i class="bi bi-calendar-event" style="color: var(--acep-green);"></i> <strong>Direction :</strong> {{ employee.direction.code }}</div>
+      </div>
+    </div>
+
+    <div class="card-section">
+      <h5><i class="bi bi-bar-chart"></i> Mes heures travaillées (année en cours)</h5>
+      <canvas id="yearChart" height="100"></canvas>
+    </div>
+
+    <div class="card-section" id="security">
+      <h5><i class="bi bi-shield-lock"></i> Sécurité — Changer mon mot de passe</h5>
+      <div class="alert alert-light border small">
+        <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+        Votre mot de passe doit contenir au moins <strong>8 caractères</strong>. <strong>Pas d'expiration automatique</strong>, mais vous pouvez le changer à tout moment.
+      </div>
+      <a href="{% url 'core:password_change' %}" class="btn-acep" style="width:auto; padding:8px 18px;">
+        <i class="bi bi-key"></i> Modifier mon mot de passe
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function fmtHmFromMinutes(totalMin) {
+    totalMin = Math.round(totalMin);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h + 'h' + String(m).padStart(2, '0');
+  }
+
+  const GREEN = '#02564A';
+  const LIGHT_GREEN = 'rgba(2, 86, 74, 0.18)';
+  const yearData = {{ year_chart_data|safe }};
+  new Chart(document.getElementById('yearChart'), {
+    type: 'line',
+    data: {
+      labels: yearData.map(x => x.label),
+      datasets: [{
+        label: 'Heures travaillées',
+        data: yearData.map(x => x.minutes / 60),
+        _minutes: yearData.map(x => x.minutes),
+        borderColor: GREEN, backgroundColor: LIGHT_GREEN,
+        fill: true, tension: 0.3,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => fmtHmFromMinutes(ctx.dataset._minutes[ctx.dataIndex]),
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: (v) => fmtHmFromMinutes(v * 60) }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

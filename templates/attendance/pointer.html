@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Pointer{% endblock %}
+{% block page_title %}Pointer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card-section text-center">
+      <h3 style="color: var(--acep-green-dark);"><i class="bi bi-hand-index-thumb-fill"></i> Pointage</h3>
+      <p class="text-muted">{% now "l j F Y" %}</p>
+      <div class="clock my-4" style="font-size: 4rem;" id="liveClock">--:--:--</div>
+
+      <div class="affectation-banner text-start">
+        <div class="mb-1">
+          <i class="bi bi-shield-check" style="color: var(--acep-green);"></i>
+          <strong>Connexion détectée :</strong>
+          {% if today_entry.arrival_bureau %}
+            {{ today_entry.arrival_bureau.name }}
+            {% if today_entry.arrival_ip %}<small class="text-muted">(IP {{ today_entry.arrival_ip }})</small>{% endif %}
+          {% else %}
+            <em class="text-muted">en attente du 1er pointage</em>
+          {% endif %}
+        </div>
+        <div>
+          <i class="bi bi-bookmark-check" style="color: var(--acep-green);"></i>
+          <strong>Votre affectation :</strong> {{ employee.bureau.name }}
+          {% if today_entry.arrival_bureau %}
+            {% if today_entry.bureau_coherent %}
+              <span class="coherence-tag ok ms-1">✓ Cohérent</span>
+            {% else %}
+              <span class="coherence-tag warn ms-1">⚠ Incohérent</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      {% if not can_punch %}
+        <div class="alert alert-warning text-start mt-3 mb-0"><i class="bi bi-info-circle"></i> {{ punch_message }}</div>
+      {% endif %}
+
+      <div class="row g-3 mt-2">
+        <!-- Arrivée -->
+        <div class="col-md-6">
+          {% if today_entry.arrival_time %}
+            <button class="pointage-btn arrivee" disabled>
+              <i class="bi bi-door-open"></i><br>Arrivée<br><small>{{ today_entry.arrival_time|time:'H:i' }}</small>
+            </button>
+          {% else %}
+            <form method="post" action="{% url 'attendance:action_arrival' %}" onsubmit="return confirm('Confirmer votre arrivée ?');">
+              {% csrf_token %}
+              <button class="pointage-btn arrivee" {% if not can_punch %}disabled{% endif %}>
+                <i class="bi bi-door-open"></i><br>Arrivée
+              </button>
+            </form>
+          {% endif %}
+        </div>
+
+        <!-- Départ -->
+        <div class="col-md-6">
+          {% if today_entry.departure_time %}
+            <button class="pointage-btn depart" disabled>
+              <i class="bi bi-door-closed"></i><br>Départ<br><small>{{ today_entry.departure_time|time:'H:i' }}</small>
+            </button>
+          {% elif today_entry.arrival_time and not today_entry.is_on_break %}
+            <form method="post" action="{% url 'attendance:action_departure' %}" onsubmit="return confirm('Confirmer votre départ ?');">
+              {% csrf_token %}
+              <button class="pointage-btn depart">
+                <i class="bi bi-door-closed"></i><br>Départ
+              </button>
+            </form>
+          {% else %}
+            <button class="pointage-btn depart" disabled>
+              <i class="bi bi-door-closed"></i><br>Départ
+            </button>
+          {% endif %}
+        </div>
+
+        <!-- Début pause -->
+        <div class="col-md-6">
+          {% if today_entry.break_start %}
+            <button class="pointage-btn pause" disabled>
+              <i class="bi bi-cup-hot"></i><br>Début pause<br><small>{{ today_entry.break_start|time:'H:i' }}</small>
+            </button>
+          {% elif today_entry.arrival_time and not today_entry.departure_time %}
+            <form method="post" action="{% url 'attendance:action_break_start' %}" onsubmit="return confirm('Confirmer le début de pause ?');">
+              {% csrf_token %}
+              <button class="pointage-btn pause">
+                <i class="bi bi-cup-hot"></i><br>Début pause
+              </button>
+            </form>
+          {% else %}
+            <button class="pointage-btn pause" disabled>
+              <i class="bi bi-cup-hot"></i><br>Début pause
+            </button>
+          {% endif %}
+        </div>
+
+        <!-- Fin pause -->
+        <div class="col-md-6">
+          {% if today_entry.break_end %}
+            <button class="pointage-btn pause" disabled>
+              <i class="bi bi-arrow-clockwise"></i><br>Fin pause<br><small>{{ today_entry.break_end|time:'H:i' }}</small>
+            </button>
+          {% elif today_entry.break_start %}
+            <form method="post" action="{% url 'attendance:action_break_end' %}" onsubmit="return confirm('Confirmer la fin de pause ?');">
+              {% csrf_token %}
+              <button class="pointage-btn pause">
+                <i class="bi bi-arrow-clockwise"></i><br>Fin pause
+              </button>
+            </form>
+          {% else %}
+            <button class="pointage-btn pause" disabled>
+              <i class="bi bi-arrow-clockwise"></i><br>Fin pause
+            </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if today_entry.departure_time %}
+        <form method="post" action="{% url 'attendance:action_cancel_departure' %}" onsubmit="return confirm('Annuler le pointage de départ ?');" class="mt-3">
+          {% csrf_token %}
+          <button class="btn btn-outline-danger" style="padding:10px 20px; border-radius:10px; font-weight:600;">
+            <i class="bi bi-x-circle"></i> Annuler le pointage de départ
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateClock() {
+    const el = document.getElementById('liveClock');
+    if (!el) return;
+    el.textContent = new Date().toLocaleTimeString('fr-FR');
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+{% endblock %}

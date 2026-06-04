@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Statistiques RH{% endblock %}
+{% block page_title %}Statistiques globales{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <p class="label">Effectif total actif</p>
+      <p class="value">{{ overview.total_employees }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <p class="label">Taux de présence aujourd'hui</p>
+      <p class="value">{{ overview.attendance_rate_today }} %</p>
+      <p class="trend text-success">{{ overview.present_today|add:overview.on_break_today }} présent(s)</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <p class="label">Heures cumulées (mois)</p>
+      <p class="value" style="font-size:1.5rem;">{{ overview.total_hours_month }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <p class="label">Anomalies (mois)</p>
+      <p class="value">{{ overview.anomalies_month }}</p>
+      <p class="trend text-danger">{{ overview.anomalies_pending }} en attente — <a href="{% url 'reporting:anomaly_list' %}">traiter</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5>Effectif par agence</h5>
+      <canvas id="chartAgence" height="200"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5>Effectif par direction</h5>
+      <canvas id="chartDirection" height="200"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5>Répartition des anomalies (mois)</h5>
+      <canvas id="chartAnomalies" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5>Taux de présence (30 derniers jours)</h5>
+      <canvas id="chartPresence" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+  const GREEN = '#02564A';
+  const LIGHT_GREEN = 'rgba(2, 86, 74, 0.18)';
+
+  const dataAgence = {{ breakdown_agence|safe }};
+  new Chart(document.getElementById('chartAgence'), {
+    type: 'bar',
+    data: {
+      labels: dataAgence.map(x => x.label),
+      datasets: [{ label: 'Effectif', data: dataAgence.map(x => x.count), backgroundColor: GREEN, borderRadius: 6 }]
+    },
+    options: { plugins: { legend: { display: false } } }
+  });
+
+  const dataDirection = {{ breakdown_direction|safe }};
+  new Chart(document.getElementById('chartDirection'), {
+    type: 'bar',
+    data: {
+      labels: dataDirection.map(x => x.label),
+      datasets: [{ label: 'Effectif', data: dataDirection.map(x => x.count), backgroundColor: GREEN, borderRadius: 6 }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+  });
+
+  const dataAno = {{ anomaly_breakdown|safe }};
+  new Chart(document.getElementById('chartAnomalies'), {
+    type: 'doughnut',
+    data: {
+      labels: dataAno.map(x => x.label),
+      datasets: [{ data: dataAno.map(x => x.count),
+                   backgroundColor: ['#fd7e14', '#b03a48', '#6f42c1', '#6c757d', '#ffc107', '#0d6efd'] }]
+    }
+  });
+
+  const dataPres = {{ presence_30|safe }};
+  new Chart(document.getElementById('chartPresence'), {
+    type: 'line',
+    data: {
+      labels: dataPres.map(x => x.date),
+      datasets: [{ label: 'Présence (%)', data: dataPres.map(x => x.rate),
+                   borderColor: GREEN, backgroundColor: LIGHT_GREEN, fill: true, tension: 0.3 }]
+    },
+    options: { scales: { y: { min: 0, max: 100 } } }
+  });
+</script>
+{% endblock %}

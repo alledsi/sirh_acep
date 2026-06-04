@@ -1,0 +1,14 @@
+# Socket systemd — SIRH ACEP
+# À installer dans /etc/systemd/system/sirh-acep.socket
+
+[Unit]
+Description=SIRH ACEP - Gunicorn socket
+
+[Socket]
+ListenStream=/run/sirh-acep.sock
+SocketUser=www-data
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

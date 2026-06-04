@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load sirh_extras %}
+
+{% block title %}Tableau de bord{% endblock %}
+{% block page_title %}Tableau de bord{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="affectation-banner">
+  <i class="bi bi-bookmark-check-fill" style="color: var(--acep-green);"></i>
+  <strong>Mon affectation :</strong>
+  <span class="hierarchy-chip"><i class="bi bi-bank"></i> {{ employee.mutuelle.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-building"></i> {{ employee.agence.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-geo-alt"></i> {{ employee.bureau.name }}</span>
+  <span class="text-muted ms-2">·</span>
+  <span class="hierarchy-chip"><i class="bi bi-diagram-2"></i> {{ employee.direction.name }}</span>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-clock-history"></i></div>
+      <p class="label">Aujourd'hui</p>
+      <p class="value">{% if today_entry.arrival_time %}{{ today_entry.arrival_time|time:'H:i' }}{% else %}--:--{% endif %}</p>
+      <p class="trend text-success">
+        {% if today_entry.departure_time %}<i class="bi bi-door-closed"></i> Parti
+        {% elif today_entry.is_on_break %}<i class="bi bi-cup-hot"></i> En pause
+        {% elif today_entry.arrival_time %}<i class="bi bi-check-circle"></i> Présent
+        {% else %}<i class="bi bi-hourglass"></i> Pas encore pointé{% endif %}
+      </p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #cfe2ff; color: #084298;"><i class="bi bi-calendar-week"></i></div>
+      <p class="label">Cette semaine</p>
+      <p class="value">{{ week_total }}</p>
+      <p class="trend text-muted">{{ week_days }} jour{{ week_days|pluralize }} travaillé{{ week_days|pluralize }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #fff3cd; color: #664d03;"><i class="bi bi-calendar-month"></i></div>
+      <p class="label">Ce mois</p>
+      <p class="value">{{ month_total }}</p>
+      <p class="trend text-muted">{{ month_days }} jour{{ month_days|pluralize }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-exclamation-triangle"></i></div>
+      <p class="label">Anomalies aujourd'hui</p>
+      <p class="value">{{ anomalies_today_count }}</p>
+      <p class="trend text-warning">À justifier auprès de la Direction</p>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Colonne gauche : Pointage du jour + Chart -->
+  <div class="col-md-8">
+    <div class="card-section">
+      <h5><i class="bi bi-clock"></i> Pointage du jour — {% now "l j F Y" %}</h5>
+
+      {% if not can_punch %}
+        <div class="alert alert-warning mb-3"><i class="bi bi-info-circle"></i> {{ punch_message }}</div>
+      {% endif %}
+
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="pointage-slot {% if not today_entry.arrival_time %}opacity-75{% endif %}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <span class="label">Arrivée</span>
+                <span class="time">{% if today_entry.arrival_time %}{{ today_entry.arrival_time|time:'H:i' }}{% else %}--:--{% endif %}</span>
+              </div>
+              {% if today_entry.arrival_time %}<span class="badge bg-success">Pointée</span>
+              {% else %}<span class="badge bg-secondary">En attente</span>{% endif %}
+            </div>
+            <div class="connexion-line">
+              {% if today_entry.arrival_bureau %}
+                <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.arrival_bureau.name }}</strong>
+                {% if today_entry.arrival_ip %}<span class="ip ms-2">{{ today_entry.arrival_ip }}</span>{% endif %}
+                {% if today_entry.bureau_coherent %}<span class="coherence-tag ok ms-1">✓ Cohérent</span>
+                {% else %}<span class="coherence-tag warn ms-1">⚠ Incohérent</span>{% endif %}
+              {% elif today_entry.arrival_ip %}<i class="bi bi-exclamation-triangle"></i> IP <code>{{ today_entry.arrival_ip }}</code> non rattachée
+              {% else %}<i class="bi bi-hourglass-split"></i> Pas encore pointé{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="pointage-slot {% if not today_entry.departure_time %}opacity-75{% endif %}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <span class="label">Départ</span>
+                <span class="time">{% if today_entry.departure_time %}{{ today_entry.departure_time|time:'H:i' }}{% else %}--:--{% endif %}</span>
+              </div>
+              {% if today_entry.departure_time %}<span class="badge bg-success">Pointé</span>
+              {% else %}<span class="badge bg-secondary">En cours</span>{% endif %}
+            </div>
+            <div class="connexion-line">
+              {% if today_entry.departure_bureau %}
+                <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.departure_bureau.name }}</strong>
+                {% if today_entry.departure_ip %}<span class="ip ms-2">{{ today_entry.departure_ip }}</span>{% endif %}
+              {% else %}<i class="bi bi-hourglass-split"></i> Pas encore pointé{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="pointage-slot {% if not today_entry.break_start %}opacity-75{% endif %}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <span class="label">Début pause</span>
+                <span class="time">{% if today_entry.break_start %}{{ today_entry.break_start|time:'H:i' }}{% else %}--:--{% endif %}</span>
+              </div>
+              {% if today_entry.break_start %}<span class="badge bg-info">OK</span>
+              {% else %}<span class="badge bg-secondary">—</span>{% endif %}
+            </div>
+            {% if today_entry.break_start_bureau %}
+              <div class="connexion-line"><i class="bi bi-geo-alt"></i> {{ today_entry.break_start_bureau.name }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="pointage-slot {% if not today_entry.break_end %}opacity-75{% endif %}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <span class="label">Fin pause</span>
+                <span class="time">{% if today_entry.break_end %}{{ today_entry.break_end|time:'H:i' }}{% else %}--:--{% endif %}</span>
+              </div>
+              {% if today_entry.break_duration %}<span class="badge bg-info">{{ today_entry.break_duration|hm }}</span>
+              {% else %}<span class="badge bg-secondary">—</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card-section">
+      <h5><i class="bi bi-bar-chart"></i> Mes heures cette semaine</h5>
+      <canvas id="weekChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Colonne droite : Pointer maintenant + Notifications -->
+  <div class="col-md-4">
+    <div class="card-section">
+      <h5><i class="bi bi-hand-index-thumb"></i> Pointer maintenant</h5>
+      <div class="text-center mb-3">
+        <div class="clock" id="liveClock">--:--:--</div>
+        <small class="text-muted">Heure du serveur ACEP</small>
+      </div>
+
+      {% if today_entry.arrival_time %}
+        <button class="pointage-btn arrivee mb-3" disabled>
+          <i class="bi bi-check-circle"></i> Arrivée pointée à {{ today_entry.arrival_time|time:'H:i' }}
+        </button>
+      {% else %}
+        <form method="post" action="{% url 'attendance:action_arrival' %}" onsubmit="return confirm('Confirmer votre arrivée ?');" class="mb-3">
+          {% csrf_token %}
+          <button class="pointage-btn arrivee" {% if not can_punch %}disabled{% endif %}>
+            <i class="bi bi-door-open"></i> Arrivée
+          </button>
+        </form>
+      {% endif %}
+
+      {% if today_entry.break_end %}
+        <button class="pointage-btn pause mb-3" disabled>
+          <i class="bi bi-cup-hot"></i> Pause terminée — {{ today_entry.break_duration|hm }}
+        </button>
+      {% elif today_entry.break_start %}
+        <form method="post" action="{% url 'attendance:action_break_end' %}" onsubmit="return confirm('Confirmer la fin de pause ?');" class="mb-3">
+          {% csrf_token %}
+          <button class="pointage-btn pause"><i class="bi bi-arrow-clockwise"></i> Fin pause</button>
+        </form>
+      {% elif today_entry.arrival_time and not today_entry.departure_time %}
+        <form method="post" action="{% url 'attendance:action_break_start' %}" onsubmit="return confirm('Confirmer le début de pause ?');" class="mb-3">
+          {% csrf_token %}
+          <button class="pointage-btn pause"><i class="bi bi-cup-hot"></i> Début pause</button>
+        </form>
+      {% else %}
+        <button class="pointage-btn pause mb-3" disabled><i class="bi bi-cup-hot"></i> Début pause</button>
+      {% endif %}
+
+      {% if today_entry.departure_time %}
+        <form method="post" action="{% url 'attendance:action_cancel_departure' %}" onsubmit="return confirm('Annuler le pointage de départ ?');">
+          {% csrf_token %}
+          <button class="btn btn-outline-danger" style="width:100%; padding:14px; border-radius:12px; font-weight:600;">
+            <i class="bi bi-x-circle"></i> Départ pointé à {{ today_entry.departure_time|time:'H:i' }} — Annuler
+          </button>
+        </form>
+      {% elif today_entry.arrival_time and not today_entry.is_on_break %}
+        <form method="post" action="{% url 'attendance:action_departure' %}" onsubmit="return confirm('Confirmer votre départ ?');">
+          {% csrf_token %}
+          <button class="pointage-btn depart"><i class="bi bi-box-arrow-right"></i> Pointer mon départ</button>
+        </form>
+      {% else %}
+        <button class="pointage-btn depart" disabled><i class="bi bi-box-arrow-right"></i> Pointer mon départ</button>
+      {% endif %}
+
+      <div class="text-center mt-3 small">
+        <i class="bi bi-shield-check" style="color: var(--acep-green);"></i>
+        {% if today_entry.arrival_bureau %}
+          Vous êtes connecté depuis <strong>{{ today_entry.arrival_bureau.name }}</strong>
+          (IP {{ today_entry.arrival_ip }})
+        {% else %}
+          Affectation : <strong>{{ employee.bureau.name }}</strong>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-section">
+      <h5><i class="bi bi-bell"></i> Notifications</h5>
+      {% if user.must_change_password %}
+        <div class="timeline-item">
+          <div class="timeline-dot late"></div>
+          <div>
+            <strong>Changer votre mot de passe</strong>
+            <small class="text-muted d-block">
+              Votre compte requiert un nouveau mot de passe —
+              <a href="{% url 'core:password_change' %}">le faire maintenant</a>
+            </small>
+          </div>
+        </div>
+      {% endif %}
+
+      {% for ano in recent_anomalies %}
+        <div class="timeline-item">
+          <div class="timeline-dot {% if ano.severity == 3 %}absent{% elif ano.severity == 2 %}late{% endif %}"></div>
+          <div>
+            <strong>{{ ano.get_anomaly_type_display }}</strong>
+            <small class="text-muted d-block">
+              {{ ano.time_entry.work_date|date:'D d/m' }} : {{ ano.description }}
+              {% if ano.is_acknowledged %}<span class="badge bg-success">Validée</span>{% endif %}
+            </small>
+          </div>
+        </div>
+      {% empty %}
+        {% if not user.must_change_password %}
+          <p class="text-muted small mb-0"><i class="bi bi-emoji-smile"></i> Aucune notification.</p>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Horloge live
+  function updateClock() {
+    const el = document.getElementById('liveClock');
+    if (!el) return;
+    el.textContent = new Date().toLocaleTimeString('fr-FR');
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Format minutes entiers → "XhYY" (cohérent avec les KPIs)
+  function fmtHmFromMinutes(totalMin) {
+    totalMin = Math.round(totalMin);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h + 'h' + String(m).padStart(2, '0');
+  }
+
+  // Graphique des heures de la semaine
+  const GREEN = '#02564A';
+  const weekData = {{ week_chart_data|safe }};
+  new Chart(document.getElementById('weekChart'), {
+    type: 'bar',
+    data: {
+      labels: weekData.map(x => x.label),
+      datasets: [{
+        label: 'Heures travaillées',
+        // On utilise les minutes/60 pour la hauteur — précision préservée
+        data: weekData.map(x => x.minutes / 60),
+        // On garde l'entier minutes en mémoire pour le tooltip
+        _minutes: weekData.map(x => x.minutes),
+        backgroundColor: GREEN, borderRadius: 6,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => fmtHmFromMinutes(ctx.dataset._minutes[ctx.dataIndex]),
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true, max: 10,
+          ticks: { callback: (v) => fmtHmFromMinutes(v * 60) }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

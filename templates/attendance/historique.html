@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load sirh_extras %}
+
+{% block title %}Mon historique{% endblock %}
+{% block page_title %}Mon historique{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if periode == 'semaine' %}active{% endif %}" href="?periode=semaine">Cette semaine</a></li>
+  <li class="nav-item"><a class="nav-link {% if periode == 'mois' %}active{% endif %}" href="?periode=mois">Ce mois</a></li>
+  <li class="nav-item"><a class="nav-link {% if periode == 'annee' %}active{% endif %}" href="?periode=annee">Cette année</a></li>
+</ul>
+
+<div class="card-section">
+  <h5>{{ label }} — Affectation : <strong>{{ employee.bureau.name }}</strong></h5>
+
+  {% if entries %}
+    <div class="table-responsive">
+      <table class="table modern-table align-middle">
+        <thead>
+          <tr>
+            <th>Jour</th><th>Arrivée</th>
+            <th>Bureau de connexion (IP)</th>
+            <th>Pause</th><th>Départ</th>
+            <th>Total</th><th>Cohérence</th><th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+            <tr {% if e.anomalies.all %}class="anomaly-row"{% endif %}>
+              <td><strong>{{ e.work_date|date:'D d/m' }}</strong></td>
+              <td>{% if e.arrival_time %}{{ e.arrival_time|time:'H:i' }}{% else %}—{% endif %}</td>
+              <td>
+                {% if e.arrival_bureau %}
+                  <strong>{{ e.arrival_bureau.name }}</strong>
+                  <small class="text-muted d-block">{{ e.arrival_ip|default:'—' }}</small>
+                {% elif e.arrival_ip %}
+                  <em class="text-danger small">IP inconnue</em>
+                  <small class="text-muted d-block">{{ e.arrival_ip }}</small>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                {% if e.break_start %}{{ e.break_start|time:'H:i' }}{% endif %}
+                {% if e.break_end %} → {{ e.break_end|time:'H:i' }}{% endif %}
+                {% if not e.break_start %}—{% endif %}
+              </td>
+              <td>{% if e.departure_time %}{{ e.departure_time|time:'H:i' }}{% elif e.arrival_time %}<em class="text-muted">en cours</em>{% else %}—{% endif %}</td>
+              <td>{% if e.worked_duration %}{{ e.worked_duration|hm }}{% else %}—{% endif %}</td>
+              <td>
+                {% if e.bureau_coherent is None %}—
+                {% elif e.bureau_coherent %}<span class="coherence-tag ok">✓</span>
+                {% else %}<span class="coherence-tag warn">⚠</span>{% endif %}
+              </td>
+              <td>
+                {% if e.anomalies.all %}
+                  {% for ano in e.anomalies.all %}
+                    {% if ano.anomaly_type == 'LATE' %}<span class="badge bg-warning text-dark">Retard</span>
+                    {% elif ano.anomaly_type == 'NO_DEPARTURE' %}<span class="badge bg-danger">Pas de départ</span>
+                    {% elif ano.anomaly_type == 'LONG_BREAK' %}<span class="badge bg-info">Pause longue</span>
+                    {% elif ano.anomaly_type == 'UNKNOWN_IP' %}<span class="badge bg-warning text-dark">IP inconnue</span>
+                    {% elif ano.anomaly_type == 'INCOHERENCE_BUREAU' %}<span class="badge bg-info">Bureau ≠</span>{% endif %}
+                  {% endfor %}
+                {% elif e.arrival_time %}
+                  <span class="badge bg-success">À l'heure</span>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          <tr>
+            <td colspan="5" class="text-end"><strong>Total {{ periode }}</strong></td>
+            <td colspan="3"><strong>{{ total|hm }}</strong> ({{ days_count }} jour{{ days_count|pluralize }})</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-inbox" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun pointage sur cette période.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

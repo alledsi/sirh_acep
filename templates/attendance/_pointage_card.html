@@ -1,0 +1,187 @@
+{% comment %}
+Partial — Affiche le statut du pointage du jour et les 4 boutons d'action.
+
+Variables attendues dans le contexte :
+- employee
+- today_entry (TimeEntry | None)
+- can_punch (bool)
+- punch_message (str)
+{% endcomment %}
+{% load sirh_extras %}
+
+<div class="affectation-banner mb-3">
+  <i class="bi bi-bookmark-check-fill" style="color: var(--acep-green);"></i>
+  <strong>Mon affectation :</strong>
+  <span class="hierarchy-chip"><i class="bi bi-bank"></i> {{ employee.mutuelle.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-building"></i> {{ employee.agence.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-geo-alt"></i> {{ employee.bureau.name }}</span>
+  <span class="text-muted ms-2">·</span>
+  <span class="hierarchy-chip"><i class="bi bi-diagram-2"></i> {{ employee.direction.name }}</span>
+</div>
+
+{% if not can_punch %}
+  <div class="alert alert-warning"><i class="bi bi-info-circle"></i> {{ punch_message }}</div>
+{% endif %}
+
+<div class="card-section">
+  <h5><i class="bi bi-clock"></i> Pointage du jour — {% now "l j F Y" %}</h5>
+  <div class="row g-3">
+    {# Arrivée #}
+    <div class="col-6">
+      <div class="pointage-slot {% if not today_entry.arrival_time %}opacity-75{% endif %}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="label">Arrivée</span>
+            <span class="time">{% if today_entry.arrival_time %}{{ today_entry.arrival_time|time:'H:i' }}{% else %}--:--{% endif %}</span>
+          </div>
+          {% if today_entry.arrival_time %}
+            <span class="badge bg-success">Pointée</span>
+          {% else %}
+            <span class="badge bg-secondary">En attente</span>
+          {% endif %}
+        </div>
+        <div class="connexion-line">
+          {% if today_entry.arrival_bureau %}
+            <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.arrival_bureau.name }}</strong>
+            {% if today_entry.arrival_ip %}<span class="ip ms-2">{{ today_entry.arrival_ip }}</span>{% endif %}
+            {% if today_entry.bureau_coherent %}
+              <span class="coherence-tag ok ms-1">✓ Cohérent</span>
+            {% else %}
+              <span class="coherence-tag warn ms-1">⚠ Incohérent</span>
+            {% endif %}
+          {% elif today_entry.arrival_ip %}
+            <i class="bi bi-exclamation-triangle"></i> IP <code>{{ today_entry.arrival_ip }}</code> non rattachée
+          {% else %}
+            <i class="bi bi-hourglass-split"></i> Pas encore pointé
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Pause #}
+    <div class="col-6">
+      <div class="pointage-slot {% if not today_entry.break_start %}opacity-75{% endif %}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="label">Pause</span>
+            <span class="time">
+              {% if today_entry.break_start %}{{ today_entry.break_start|time:'H:i' }}{% else %}--:--{% endif %}
+              →
+              {% if today_entry.break_end %}{{ today_entry.break_end|time:'H:i' }}{% else %}--:--{% endif %}
+            </span>
+          </div>
+          {% if today_entry.break_end %}
+            <span class="badge bg-info">Terminée</span>
+          {% elif today_entry.break_start %}
+            <span class="badge bg-warning text-dark">En pause</span>
+          {% else %}
+            <span class="badge bg-secondary">—</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Départ #}
+    <div class="col-6">
+      <div class="pointage-slot {% if not today_entry.departure_time %}opacity-75{% endif %}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="label">Départ</span>
+            <span class="time">{% if today_entry.departure_time %}{{ today_entry.departure_time|time:'H:i' }}{% else %}--:--{% endif %}</span>
+          </div>
+          {% if today_entry.departure_time %}
+            <span class="badge bg-success">Pointé</span>
+          {% else %}
+            <span class="badge bg-secondary">En cours</span>
+          {% endif %}
+        </div>
+        {% if today_entry.departure_bureau %}
+          <div class="connexion-line">
+            <i class="bi bi-geo-alt"></i> {{ today_entry.departure_bureau.name }}
+            {% if today_entry.departure_ip %}<span class="ip ms-2">{{ today_entry.departure_ip }}</span>{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Total journée #}
+    <div class="col-6">
+      <div class="pointage-slot">
+        <span class="label">Total du jour</span>
+        <span class="time">
+          {% if today_entry.worked_duration %}
+            {{ today_entry.worked_duration|hm }}
+          {% else %}
+            <em class="text-muted" style="font-size:1rem;">en cours…</em>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  {% if today_entry.anomalies.all %}
+    <div class="alert alert-warning small mt-3 mb-0">
+      <i class="bi bi-exclamation-triangle"></i> <strong>Anomalies détectées aujourd'hui :</strong>
+      <ul class="mb-0 mt-1">
+        {% for ano in today_entry.anomalies.all %}<li>{{ ano.description }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card-section">
+  <h5><i class="bi bi-hand-index-thumb"></i> Pointer maintenant</h5>
+  <div class="row g-2">
+    <div class="col-md-3">
+      {% if today_entry.arrival_time %}
+        <button class="pointage-btn arrivee" disabled><i class="bi bi-check-circle"></i> Arrivée {{ today_entry.arrival_time|time:'H:i' }}</button>
+      {% else %}
+        <form method="post" action="{% url 'attendance:action_arrival' %}" onsubmit="return confirm('Confirmer votre arrivée ?');">
+          {% csrf_token %}
+          <button class="pointage-btn arrivee" {% if not can_punch %}disabled{% endif %}><i class="bi bi-door-open"></i> Arrivée</button>
+        </form>
+      {% endif %}
+    </div>
+    <div class="col-md-3">
+      {% if today_entry.break_start and not today_entry.break_end %}
+        <form method="post" action="{% url 'attendance:action_break_end' %}" onsubmit="return confirm('Confirmer la fin de pause ?');">
+          {% csrf_token %}
+          <button class="pointage-btn pause"><i class="bi bi-arrow-clockwise"></i> Fin pause</button>
+        </form>
+      {% elif today_entry.break_end %}
+        <button class="pointage-btn pause" disabled><i class="bi bi-check-circle"></i> Pause OK</button>
+      {% elif today_entry.arrival_time and not today_entry.departure_time %}
+        <form method="post" action="{% url 'attendance:action_break_start' %}" onsubmit="return confirm('Confirmer le début de pause ?');">
+          {% csrf_token %}
+          <button class="pointage-btn pause"><i class="bi bi-cup-hot"></i> Début pause</button>
+        </form>
+      {% else %}
+        <button class="pointage-btn pause" disabled><i class="bi bi-cup-hot"></i> Début pause</button>
+      {% endif %}
+    </div>
+    <div class="col-md-3">
+      {% if today_entry.departure_time %}
+        <button class="pointage-btn depart" disabled><i class="bi bi-check-circle"></i> Départ {{ today_entry.departure_time|time:'H:i' }}</button>
+      {% else %}
+        {% if today_entry.arrival_time and not today_entry.is_on_break %}
+          <form method="post" action="{% url 'attendance:action_departure' %}" onsubmit="return confirm('Confirmer votre départ ?');">
+            {% csrf_token %}
+            <button class="pointage-btn depart"><i class="bi bi-box-arrow-right"></i> Départ</button>
+          </form>
+        {% else %}
+          <button class="pointage-btn depart" disabled><i class="bi bi-box-arrow-right"></i> Départ</button>
+        {% endif %}
+      {% endif %}
+    </div>
+    <div class="col-md-3">
+      {% if today_entry.departure_time %}
+        <form method="post" action="{% url 'attendance:action_cancel_departure' %}" onsubmit="return confirm('Annuler le pointage de départ ?');">
+          {% csrf_token %}
+          <button class="btn btn-outline-danger w-100" style="padding: 22px; border-radius: 12px; font-weight:600;"><i class="bi bi-x-circle"></i> Annuler départ</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>

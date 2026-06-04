@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load sirh_extras %}
+
+{% block title %}Tableau de direction{% endblock %}
+{% block page_title %}Tableau de direction{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="affectation-banner mb-3">
+  <i class="bi bi-diagram-2" style="color: var(--acep-green);"></i>
+  <strong>Vue Direction :</strong>
+  {% for d in directions %}{{ d.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+  <span class="text-muted ms-2">·</span>
+  {{ today_status.total }} employé{{ today_status.total|pluralize }}
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-people"></i></div>
+      <p class="label">Effectif direction</p>
+      <p class="value">{{ today_status.total }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green-dark);"><i class="bi bi-check-circle"></i></div>
+      <p class="label">Présents aujourd'hui</p>
+      <p class="value">{{ today_status.present|add:today_status.on_break }}</p>
+      <p class="trend text-success">{{ today_status.attendance_rate }} % de présence</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #fff3cd; color: #664d03;"><i class="bi bi-door-closed"></i></div>
+      <p class="label">Déjà partis</p>
+      <p class="value">{{ today_status.departed }}</p>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-exclamation-octagon"></i></div>
+      <p class="label">Anomalies à valider</p>
+      <p class="value">{{ anomalies_pending_count }}</p>
+      <p class="trend text-muted">
+        <a href="{% url 'reporting:directeur_anomalies' %}">Traiter →</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card-section">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0"><i class="bi bi-people"></i> Statut en temps réel — Mes employés</h5>
+        <a href="{% url 'reporting:directeur_equipe' %}" class="btn btn-sm btn-outline-secondary">Voir toute l'équipe</a>
+      </div>
+      <table class="table modern-table">
+        <thead>
+          <tr><th>Employé</th><th>Statut</th><th>Bureau de connexion</th><th>Affectation</th><th>Cohérence</th></tr>
+        </thead>
+        <tbody>
+          {% for e in employees|slice:":10" %}
+            {% with today=today_entries_by_employee|dictsort:"employee_id" %}{% endwith %}
+            <tr>
+              <td><span class="avatar">{{ e.initials }}</span> {{ e.user.get_full_name|default:e.user.matricule }}</td>
+              {% with te=today_entries_by_employee|get_item:e.pk %}
+                <td>
+                  {% if te %}
+                    {% if te.departure_time %}<span class="badge bg-secondary">Parti</span>
+                    {% elif te.is_on_break %}<span class="badge bg-info">En pause</span>
+                    {% elif te.arrival_time %}<span class="badge bg-success">Présent</span>{% endif %}
+                  {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
+                </td>
+                <td>
+                  {% if te.arrival_bureau %}{{ te.arrival_bureau.name }} <small class="text-muted">({{ te.arrival_ip }})</small>
+                  {% else %}—{% endif %}
+                </td>
+                <td>{{ e.bureau.name }}</td>
+                <td>
+                  {% if te.bureau_coherent is None %}—
+                  {% elif te.bureau_coherent %}<span class="coherence-tag ok">✓</span>
+                  {% else %}<span class="coherence-tag warn">⚠</span>{% endif %}
+                </td>
+              {% endwith %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if employees|length > 10 %}
+        <small class="text-muted">+ {{ employees|length|add:"-10" }} autre(s) employé(s) — <a href="{% url 'reporting:directeur_equipe' %}">voir tout</a></small>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card-section">
+      <h5><i class="bi bi-exclamation-triangle"></i> Anomalies à valider</h5>
+      {% if anomalies_pending %}
+        {% for ano in anomalies_pending %}
+          <div class="border-bottom py-2">
+            <small class="text-muted">{{ ano.time_entry.work_date|date:'d/m' }}</small>
+            <strong class="d-block">{{ ano.time_entry.employee.user.get_full_name|default:ano.time_entry.employee.user.matricule }}</strong>
+            <small>
+              {% if ano.anomaly_type == 'LATE' %}<span class="badge bg-warning text-dark">Retard</span>
+              {% elif ano.anomaly_type == 'NO_DEPARTURE' %}<span class="badge bg-danger">Pas de départ</span>
+              {% elif ano.anomaly_type == 'LONG_BREAK' %}<span class="badge bg-info">Pause longue</span>
+              {% elif ano.anomaly_type == 'UNKNOWN_IP' %}<span class="badge bg-warning text-dark">IP inconnue</span>
+              {% elif ano.anomaly_type == 'INCOHERENCE_BUREAU' %}<span class="badge bg-info">Bureau ≠</span>{% endif %}
+              {{ ano.description }}
+            </small>
+            <a href="{% url 'reporting:anomaly_validate' ano.pk %}" class="btn btn-sm btn-outline-success mt-1">Valider</a>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small mb-0">Aucune anomalie en attente. <i class="bi bi-emoji-smile"></i></p>
+      {% endif %}
+    </div>
+
+    <div class="card-section">
+      <h5><i class="bi bi-bar-chart"></i> Activité (30 jours)</h5>
+      <p class="mb-1"><strong>Heures cumulées :</strong> {{ period_stats.total_hours }}</p>
+      <p class="mb-1"><strong>Jours travaillés :</strong> {{ period_stats.days_count }}</p>
+      <p class="mb-0 text-muted small">Sur l'ensemble de votre direction.</p>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card-section">
+      <h5><i class="bi bi-bar-chart-line"></i> Heures par employé — Mois en cours</h5>
+      {% if hours_per_employee_count %}
+        <canvas id="hoursPerEmployeeChart" height="{% if hours_per_employee_count > 8 %}120{% else %}80{% endif %}"></canvas>
+      {% else %}
+        <p class="text-muted small mb-0">Aucune donnée pour le mois en cours.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Format minutes entiers → "XhYY" (cohérent avec les KPIs)
+  function fmtHmFromMinutes(totalMin) {
+    totalMin = Math.round(totalMin);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h + 'h' + String(m).padStart(2, '0');
+  }
+
+  (function() {
+    const data = {{ hours_per_employee_data|safe }};
+    const el = document.getElementById('hoursPerEmployeeChart');
+    if (!el || !data.length) return;
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: data.map(x => x.label),
+        datasets: [{
+          label: 'Heures travaillées',
+          data: data.map(x => x.minutes / 60),
+          _minutes: data.map(x => x.minutes),
+          backgroundColor: '#02564A',
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => fmtHmFromMinutes(ctx.dataset._minutes[ctx.dataIndex]),
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Heures' },
+            ticks: { callback: (v) => fmtHmFromMinutes(v * 60) }
+          },
+          x: {
+            ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 }
+          }
+        }
+      }
+    });
+  })();
+</script>
+{% endblock %}

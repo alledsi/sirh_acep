@@ -1,0 +1,38 @@
+# Unit systemd pour Gunicorn — SIRH ACEP Pointage
+# À installer dans /etc/systemd/system/sirh-acep.service
+#
+# Adapter avant utilisation :
+#   - User / Group : utilisateur Linux dédié (ex : sirh)
+#   - WorkingDirectory : chemin du projet
+#   - EnvironmentFile : chemin du .env
+#   - bind : adresse:port (Unix socket recommandé)
+
+[Unit]
+Description=SIRH ACEP - Gunicorn daemon
+Requires=sirh-acep.socket
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=sirh
+Group=www-data
+WorkingDirectory=/opt/sirh_acep
+EnvironmentFile=/opt/sirh_acep/.env
+
+ExecStart=/opt/sirh_acep/.venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/run/sirh-acep.sock \
+    --access-logfile /var/log/sirh_acep/access.log \
+    --error-logfile /var/log/sirh_acep/error.log \
+    --timeout 60 \
+    config.wsgi:application
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

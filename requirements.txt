@@ -1,0 +1,22 @@
+# SIRH ACEP — Dépendances
+# Python >= 3.11 recommandé
+
+Django>=5.1,<6.0
+django-environ>=0.11
+
+# Driver PostgreSQL (utilisé en prod, optionnel en dev avec SQLite)
+psycopg[binary]>=3.1
+
+# Serveur d'application
+gunicorn>=21.2
+
+# Gestion des fichiers statiques en production
+whitenoise>=6.6
+
+# Upload d'images (photos employés)
+Pillow>=10.2
+
+# Dev tools (optionnel — installe avec : pip install -r requirements-dev.txt)
+# django-debug-toolbar>=4.3
+# ruff>=0.4
+# black>=24.3

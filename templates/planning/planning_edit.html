@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Plannings & horaires{% endblock %}
+{% block page_title %}Plannings & horaires{% endblock %}
+
+{% block content %}
+
+<div class="alert alert-light border" style="border-left: 4px solid var(--acep-green) !important;">
+  <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+  <strong>Le planning définit la base de la détection automatique.</strong>
+  Un agent est marqué <span class="badge bg-warning text-dark">En retard</span> si son arrivée dépasse l'heure de référence + la tolérance. Les pauses au-delà de la durée maximale déclenchent une anomalie <span class="badge bg-info">Pause longue</span>.
+  <br><strong>Jours ouvrés ACEP :</strong> lundi à vendredi (obligatoires) et samedi (optionnel — l'employé qui travaille pointe librement). Le dimanche est un jour de repos.
+  <br>Les <strong>horaires restent modifiables</strong> à tout moment en cas de période particulière.
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-people"></i></div>
+      <p class="label">Effectif concerné</p>
+      <p class="value">{{ total_employees }}</p>
+      <p class="trend text-success">Tous les employés ACEP</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="icon" style="background: #cfe2ff; color: #084298;"><i class="bi bi-stopwatch"></i></div>
+      <p class="label">Tolérance retard</p>
+      <p class="value">{{ planning.tolerance_minutes }} <small style="font-size:0.9rem;">min</small></p>
+      <p class="trend text-muted">Modifiable ci-dessous</p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-clock-history"></i></div>
+      <p class="label">Dernière mise à jour</p>
+      <p class="value" style="font-size:1.1rem;">{{ last_update_at|date:'d/m/Y' }}</p>
+      <p class="trend text-muted">{{ last_update_at|date:'H:i' }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="card-section">
+  <h5><i class="bi bi-pencil-square"></i> Planning ACEP — Horaires de référence (un seul planning pour tous)</h5>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">{{ form.tolerance_minutes.label }}</label>
+        <div class="input-group">
+          {{ form.tolerance_minutes }}
+          <span class="input-group-text">min</span>
+        </div>
+        {% if form.tolerance_minutes.errors %}<div class="text-danger small">{{ form.tolerance_minutes.errors }}</div>{% endif %}
+        <small class="text-muted">Au-delà de cette tolérance, l'arrivée est marquée comme un retard.</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{{ form.max_break_duration_hhmm.label }}</label>
+        <div class="input-group">
+          {{ form.max_break_duration_hhmm }}
+          <span class="input-group-text">heures:min</span>
+        </div>
+        {% if form.max_break_duration_hhmm.errors %}<div class="text-danger small">{{ form.max_break_duration_hhmm.errors }}</div>{% endif %}
+        <small class="text-muted">Une pause plus longue déclenche une anomalie.</small>
+      </div>
+    </div>
+
+    <hr class="my-4">
+
+    <label class="form-label"><strong>Horaires par jour</strong></label>
+    {{ formset.management_form }}
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead style="background:#f8f9fa;">
+          <tr>
+            <th>Jour</th><th>Mode</th><th>Début</th><th>Fin</th><th>Début pause</th><th>Fin pause</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in formset %}
+            {% for h in sub.hidden_fields %}{{ h }}{% endfor %}
+            <tr{% if sub.instance.day_of_week == 5 %} style="background: #fff8e1;"{% elif sub.instance.day_of_week == 6 %} style="opacity:0.55;"{% endif %}>
+              <td><strong>{{ sub.instance.get_day_of_week_display }}</strong></td>
+              <td>{{ sub.mode }}</td>
+              <td>{{ sub.start_time }}</td>
+              <td>{{ sub.end_time }}</td>
+              <td>{{ sub.break_start }}</td>
+              <td>{{ sub.break_end }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <small class="text-muted">
+      <i class="bi bi-info-circle"></i>
+      Le mode <strong>Optionnel (pointage libre)</strong> autorise le pointage sans le rendre obligatoire — pratique pour le samedi.
+      Le dimanche reste un jour de repos par défaut (mode <em>Non travaillé</em>).
+    </small>
+
+    <hr class="my-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted">
+        <i class="bi bi-clock-history"></i> Dernière modification : <strong>{{ last_update_at|date:'d/m/Y H:i' }}</strong>
+      </small>
+      <div>
+        <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;">
+          <i class="bi bi-check-circle"></i> Enregistrer
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

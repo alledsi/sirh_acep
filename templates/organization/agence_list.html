@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Agences{% endblock %}
+{% block page_title %}Agences{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h5><i class="bi bi-building"></i> Agences ({{ paginator.count|default:agences|length }})</h5>
+    <a href="{% url 'organization:agence_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouvelle agence
+    </a>
+  </div>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+      <select name="mutuelle" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Toutes les mutuelles</option>
+        {% for m in mutuelles %}
+          <option value="{{ m.pk }}" {% if selected_mutuelle == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.code }} — {{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% if agences %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Nom</th>
+          <th>Mutuelle</th>
+          <th>Région</th>
+          <th>Bureaux</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in agences %}
+          <tr>
+            <td><code>{{ a.code }}</code></td>
+            <td><strong>{{ a.name }}</strong></td>
+            <td><span class="hierarchy-chip"><i class="bi bi-bank"></i> {{ a.mutuelle.name }}</span></td>
+            <td>{{ a.region|default:'—' }}</td>
+            <td>{{ a.nb_bureaux }}</td>
+            <td>
+              {% if a.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+            </td>
+            <td>
+              <a href="{% url 'organization:agence_update' a.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'organization:agence_delete' a.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-inbox" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucune agence enregistrée.</p>
+      <a href="{% url 'organization:agence_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+        <i class="bi bi-plus-lg"></i> Créer la première agence
+      </a>
+    </div>
+  {% endif %}
+
+  {% include 'organization/_pagination.html' %}
+</div>
+{% endblock %}

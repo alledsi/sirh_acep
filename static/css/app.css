@@ -1,0 +1,258 @@
+/* SIRH ACEP — Pointage — Feuille de style commune */
+
+:root {
+  --acep-green: #02564A;
+  --acep-green-light: #d6e6e3;
+  --acep-green-dark: #013D34;
+  --acep-green-hover: #014137;
+  --bg: #f4f7f6;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  margin: 0;
+}
+
+/* ============ LOGIN PAGE ============ */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+  max-width: 920px;
+  width: 100%;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+}
+.login-visual {
+  background: var(--acep-green-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+.login-visual img {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  display: block;
+}
+.login-form {
+  padding: 50px 45px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.login-form .app-brand {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--acep-green);
+  margin-bottom: 24px;
+}
+.login-form .app-brand i { font-size: 2rem; }
+.login-form .app-brand .name {
+  font-size: 1.6rem; font-weight: 800; letter-spacing: 1px;
+}
+.login-form h3 {
+  color: #1a1a1a; margin-bottom: 6px; font-weight: 700;
+}
+.login-form .subtitle {
+  color: #6c757d; margin-bottom: 30px; font-size: 0.95rem;
+}
+.login-form .form-control {
+  padding: 12px 16px; border-radius: 10px; border: 1.5px solid #e0e0e0;
+}
+.login-form .form-control:focus {
+  border-color: var(--acep-green);
+  box-shadow: 0 0 0 0.2rem rgba(2, 86, 74, 0.15);
+}
+.login-form .form-label {
+  font-weight: 600; color: #495057; font-size: 0.88rem;
+}
+.btn-acep {
+  background: var(--acep-green); color: white;
+  padding: 12px; border-radius: 10px; border: none;
+  font-weight: 600; transition: all 0.2s;
+  width: 100%;
+  cursor: pointer;
+}
+.btn-acep:hover { background: var(--acep-green-hover); color: white; transform: translateY(-1px); }
+.login-form .footer-text {
+  text-align: center; margin-top: 24px; color: #adb5bd; font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+  .login-card { grid-template-columns: 1fr; }
+  .login-visual { padding: 20px; }
+  .login-form { padding: 30px 25px; }
+}
+
+/* ============ APP LAYOUT ============ */
+.sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+  background: var(--acep-green-dark); color: white; padding: 20px 0;
+  overflow-y: auto; z-index: 10;
+}
+.sidebar .brand {
+  padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar .brand i { font-size: 1.7rem; }
+.sidebar .brand .name { font-size: 1.3rem; font-weight: 800; letter-spacing: 1.5px; }
+.sidebar .brand small { display: block; opacity: 0.7; font-size: 0.7rem; }
+.sidebar .nav-section {
+  padding: 14px 20px 6px; font-size: 0.7rem; text-transform: uppercase;
+  opacity: 0.55; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;
+}
+.sidebar .nav-section .role-tag {
+  background: rgba(255,255,255,0.15); padding: 2px 7px; border-radius: 10px;
+  font-size: 0.65rem; opacity: 1;
+}
+.sidebar a {
+  display: flex; align-items: center; padding: 9px 20px;
+  color: rgba(255,255,255,0.85); text-decoration: none;
+  transition: all 0.15s; gap: 10px; font-size: 0.92rem;
+}
+.sidebar a:hover { background: rgba(255,255,255,0.08); color: white; }
+.sidebar a.active { background: var(--acep-green); color: white; border-left: 3px solid #fff; }
+.sidebar a i { width: 18px; }
+.sidebar a small { opacity: 0.5; font-size: 0.7rem; }
+
+.main { margin-left: 260px; padding: 20px 30px; }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: white;
+  padding: 12px 20px; border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;
+  flex-wrap: wrap; gap: 10px;
+}
+
+.role-badges .badge { font-size: 0.7rem; margin-right: 4px; padding: 5px 9px; }
+
+.stat-card {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05); height: 100%;
+}
+.stat-card .icon {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; margin-bottom: 12px;
+}
+.stat-card .value { font-size: 1.8rem; font-weight: 700; margin: 0; color: var(--acep-green-dark); }
+.stat-card .label { color: #6c757d; font-size: 0.9rem; margin: 0; }
+.stat-card .trend { font-size: 0.8rem; margin-top: 5px; }
+
+.card-section {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;
+}
+.card-section h5 { margin: 0 0 15px 0; font-weight: 600; color: var(--acep-green-dark); }
+
+.affectation-banner {
+  background: linear-gradient(90deg, var(--acep-green-light), rgba(255,255,255,0.6));
+  padding: 12px 16px; border-radius: 10px; border-left: 4px solid var(--acep-green);
+  font-size: 0.92rem; margin-bottom: 16px;
+}
+
+.avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--acep-green); color: white;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 0.85rem;
+}
+.avatar-lg { width: 80px; height: 80px; font-size: 1.6rem; }
+
+.badge.bg-success { background: var(--acep-green) !important; }
+.badge.bg-primary { background: #2466a3 !important; }
+.badge.bg-dg { background: #3a2754 !important; color: white; }
+
+.progress-bar { background-color: var(--acep-green); }
+
+.finger-icon {
+  display: inline-flex;
+  transform: rotate(-15deg);
+}
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar .brand .name, .sidebar .brand small, .sidebar a span, .sidebar .nav-section { display: none; }
+  .main { margin-left: 60px; padding: 15px; }
+}
+
+/* ============ POINTAGE — BOUTONS ACTION ============ */
+.clock {
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  color: var(--acep-green-dark);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.pointage-btn {
+  width: 100%;
+  padding: 22px 18px;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  line-height: 1.35;
+  text-align: center;
+}
+.pointage-btn i { font-size: 1.5rem; display: inline-block; margin-bottom: 4px; }
+.pointage-btn small { font-size: 0.78rem; opacity: 0.9; font-weight: 500; }
+.pointage-btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+.pointage-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+
+.pointage-btn.arrivee { background: var(--acep-green); }
+.pointage-btn.arrivee:hover:not(:disabled) { background: var(--acep-green-dark); }
+
+.pointage-btn.depart { background: #b03a48; }
+.pointage-btn.depart:hover:not(:disabled) { background: #8a2c38; }
+
+.pointage-btn.pause { background: #c97a1e; }
+.pointage-btn.pause:hover:not(:disabled) { background: #a05f12; }
+
+/* ============ POINTAGE — SLOTS / CHIPS / TAGS ============ */
+.pointage-slot {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 3px solid #dee2e6;
+}
+.pointage-slot.done { border-left-color: var(--acep-green); background: var(--acep-green-light); }
+.pointage-slot .slot-label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; }
+.pointage-slot .slot-time { font-size: 1.1rem; font-weight: 700; color: var(--acep-green-dark); }
+
+.hierarchy-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--acep-green-light); color: var(--acep-green-dark);
+  padding: 3px 10px; border-radius: 12px;
+  font-size: 0.78rem; font-weight: 600;
+}
+
+.coherence-tag {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.coherence-tag.ok { background: #d4edda; color: #1e7e34; }
+.coherence-tag.warn { background: #fff3cd; color: #856404; }

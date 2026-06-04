@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load sirh_extras %}
+
+{% block title %}Pointage {{ entry.work_date|date:'d/m/Y' }}{% endblock %}
+{% block page_title %}Pointage du {{ entry.work_date|date:'l d F Y' }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8">
+    <div class="card-section">
+      <h5><i class="bi bi-clock"></i> Détail du pointage</h5>
+      <table class="table">
+        <tr><th style="width:35%;">Employé</th><td><a href="{% url 'employees:employee_detail' employee.pk %}">{{ employee.user.get_full_name|default:employee.user.matricule }}</a></td></tr>
+        <tr><th>Date</th><td>{{ entry.work_date|date:'l d F Y' }}</td></tr>
+        <tr><th>Arrivée</th>
+          <td>
+            {% if entry.arrival_time %}{{ entry.arrival_time|time:'H:i' }}
+              — {% if entry.arrival_bureau %}{{ entry.arrival_bureau.name }}{% else %}<em>Bureau inconnu</em>{% endif %}
+              {% if entry.arrival_ip %}(<code>{{ entry.arrival_ip }}</code>){% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        <tr><th>Début pause</th><td>{% if entry.break_start %}{{ entry.break_start|time:'H:i' }} {% if entry.break_start_bureau %}— {{ entry.break_start_bureau.name }}{% endif %}{% else %}—{% endif %}</td></tr>
+        <tr><th>Fin pause</th><td>{% if entry.break_end %}{{ entry.break_end|time:'H:i' }} {% if entry.break_end_bureau %}— {{ entry.break_end_bureau.name }}{% endif %}{% else %}—{% endif %}</td></tr>
+        <tr><th>Départ</th>
+          <td>
+            {% if entry.departure_time %}{{ entry.departure_time|time:'H:i' }}
+              — {% if entry.departure_bureau %}{{ entry.departure_bureau.name }}{% else %}<em>Bureau inconnu</em>{% endif %}
+              {% if entry.departure_ip %}(<code>{{ entry.departure_ip }}</code>){% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        <tr><th>Durée travaillée</th><td>{{ entry.worked_duration|hm }}</td></tr>
+        <tr><th>Bureau d'affectation</th><td>{{ employee.bureau.name }}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card-section">
+      <h5><i class="bi bi-exclamation-triangle"></i> Anomalies ({{ entry.anomalies.count }})</h5>
+      {% if entry.anomalies.all %}
+        {% for ano in entry.anomalies.all %}
+          <div class="alert alert-{% if ano.severity == 3 %}danger{% elif ano.severity == 2 %}warning{% else %}info{% endif %} small">
+            <strong>{{ ano.get_anomaly_type_display }}</strong>
+            <p class="mb-0">{{ ano.description }}</p>
+            {% if ano.is_acknowledged %}
+              <small class="text-success"><i class="bi bi-check-circle"></i> Validée par {{ ano.acknowledged_by }} le {{ ano.acknowledged_at|date:'d/m/Y' }}</small>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small mb-0">Aucune anomalie.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

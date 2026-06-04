@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Employés{% endblock %}
+{% block page_title %}Annuaire des employés{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h5><i class="bi bi-person-vcard"></i> Employés ({{ paginator.count|default:employees|length }})</h5>
+    <a href="{% url 'employees:employee_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouvel employé
+    </a>
+  </div>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3"><input type="search" name="q" value="{{ filters.q }}" class="form-control form-control-sm" placeholder="Nom, matricule, email, poste..."></div>
+    <div class="col-md-2">
+      <select name="mutuelle" class="form-select form-select-sm">
+        <option value="">Mutuelle</option>
+        {% for m in mutuelles %}<option value="{{ m.pk }}" {% if filters.mutuelle == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="bureau" class="form-select form-select-sm">
+        <option value="">Bureau</option>
+        {% for b in bureaux %}<option value="{{ b.pk }}" {% if filters.bureau == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.code }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="direction" class="form-select form-select-sm">
+        <option value="">Direction</option>
+        {% for d in directions %}<option value="{{ d.pk }}" {% if filters.direction == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <select name="role" class="form-select form-select-sm">
+        <option value="">Rôle</option>
+        {% for code, label in role_choices %}<option value="{{ code }}" {% if filters.role == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-1">
+      <select name="statut" class="form-select form-select-sm">
+        <option value="all" {% if filters.statut == 'all' %}selected{% endif %}>Tous</option>
+        <option value="active" {% if filters.statut == 'active' %}selected{% endif %}>Actifs</option>
+        <option value="inactive" {% if filters.statut == 'inactive' %}selected{% endif %}>Inactifs</option>
+      </select>
+      <button class="btn btn-sm btn-outline-success"><i class="bi bi-funnel"></i></button>
+    </div>
+  </form>
+
+  {% if employees %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr><th>Mat.</th><th>Nom</th><th>Poste</th><th>Bureau</th><th>Direction</th><th>Rôles</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+          <tr>
+            <td><code>{{ e.user.matricule }}</code></td>
+            <td>
+              <span class="avatar">{{ e.initials }}</span>
+              <a href="{% url 'employees:employee_detail' e.pk %}">{{ e.user.get_full_name|default:e.user.matricule }}</a>
+            </td>
+            <td>{{ e.position }}</td>
+            <td><small>{{ e.bureau.code }}</small></td>
+            <td><small>{{ e.direction.code }}</small></td>
+            <td>
+              {% for r in e.user.roles %}
+                {% if r == 'AGENT' %}<span class="badge bg-success">A</span>
+                {% elif r == 'DIRECTEUR' %}<span class="badge bg-primary">Dir</span>
+                {% elif r == 'RH' %}<span class="badge bg-warning text-dark">RH</span>
+                {% elif r == 'DG' %}<span class="badge bg-dg">DG</span>{% endif %}
+              {% endfor %}
+            </td>
+            <td>{% if e.is_active %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Inactif</span>{% endif %}</td>
+            <td>
+              <a href="{% url 'employees:employee_detail' e.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'employees:employee_update' e.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-inbox" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun employé.</p>
+      <a href="{% url 'employees:employee_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">Créer le premier employé</a>
+    </div>
+  {% endif %}
+
+  <div class="alert alert-light border small mb-0 mt-3">
+    <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+    Lors de la création, le <strong>matricule devient l'identifiant de connexion</strong> et la RH choisit les rôles (AGENT, DIRECTEUR, RH, DG — cumulables). Le poste est saisi en texte libre.
+  </div>
+
+  {% include 'organization/_pagination.html' %}
+</div>
+{% endblock %}

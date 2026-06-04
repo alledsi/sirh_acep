@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if mode == 'update' %}Modifier{% else %}Nouvel{% endif %} employé{% endblock %}
+{% block page_title %}{% if mode == 'update' %}Modifier {{ employee.user.get_full_name }}{% else %}Nouvel employé{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-10 mx-auto">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card-section">
+        <h5><i class="bi bi-person-vcard"></i> Compte utilisateur (connexion)</h5>
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">
+              {% if mode == 'update' %}{{ form.matricule_display.label }}{% else %}{{ form.matricule.label }}{% endif %}
+              <span class="text-danger">*</span>
+            </label>
+            {% if mode == 'update' %}
+              {{ form.matricule_display }}
+              <small class="text-muted">Le matricule n'est pas modifiable.</small>
+            {% else %}
+              {{ form.matricule }}
+              {% if form.matricule.errors %}<div class="text-danger small">{{ form.matricule.errors }}</div>{% endif %}
+              <small class="text-muted">{{ form.matricule.help_text }}</small>
+            {% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.first_name.label }} <span class="text-danger">*</span></label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}<div class="text-danger small">{{ form.first_name.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">{{ form.last_name.label }} <span class="text-danger">*</span></label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-7">
+            <label class="form-label">{{ form.email.label }} <span class="text-danger">*</span></label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">{{ form.phone.label }}</label>
+            {{ form.phone }}
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">{{ form.roles.label }} <span class="text-danger">*</span></label>
+            <div class="row g-2">
+              {% for choice in form.roles %}
+                <div class="col-md-3">
+                  <div class="form-check">
+                    {{ choice.tag }}
+                    <label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            {% if form.roles.errors %}<div class="text-danger small">{{ form.roles.errors }}</div>{% endif %}
+            <small class="text-muted">Cumulables. <strong>AGENT</strong> est requis pour pouvoir pointer ; <strong>RH</strong>/<strong>DG</strong> donnent une visibilité globale ; <strong>DIRECTEUR</strong> donne accès à sa direction.</small>
+          </div>
+
+          {% if mode == 'create' %}
+            <div class="col-md-6">
+              <label class="form-label">{{ form.password.label }} <span class="text-danger">*</span></label>
+              {{ form.password }}
+              {% if form.password.errors %}<div class="text-danger small">{{ form.password.errors }}</div>{% endif %}
+              <small class="text-muted">Mot de passe temporaire à communiquer à l'employé.</small>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check pb-2">{{ form.must_change_password }}
+                <label class="form-check-label" for="{{ form.must_change_password.id_for_label }}">{{ form.must_change_password.label }}</label>
+              </div>
+            </div>
+          {% else %}
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check pb-2">{{ form.is_user_active }}
+                <label class="form-check-label" for="{{ form.is_user_active.id_for_label }}">{{ form.is_user_active.label }}</label>
+              </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-end justify-content-end">
+              <a href="{% url 'core:password_change' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-shield-lock"></i> Réinitialiser le mot de passe</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-section">
+        <h5><i class="bi bi-bookmark-check"></i> Affectation</h5>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.bureau.label }} <span class="text-danger">*</span></label>
+            {{ form.bureau }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.direction.label }} <span class="text-danger">*</span></label>
+            {{ form.direction }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.position.label }} <span class="text-danger">*</span></label>
+            {{ form.position }}
+            {% if position_suggestions %}
+              <datalist id="position-suggestions">
+                {% for pos in position_suggestions %}<option value="{{ pos }}">{% endfor %}
+              </datalist>
+            {% endif %}
+            <small class="text-muted">Saisie libre. Les postes déjà utilisés sont suggérés.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-section">
+        <h5><i class="bi bi-info-circle"></i> Infos personnelles</h5>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">{{ form.hire_date.label }} <span class="text-danger">*</span></label>
+            {{ form.hire_date }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.birth_date.label }}</label>
+            {{ form.birth_date }}
+          </div>
+          {% if mode == 'update' %}
+            <div class="col-12">
+              <div class="form-check">
+                {{ form.is_active }}
+                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-section">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;">
+            <i class="bi bi-check-circle"></i> {% if mode == 'update' %}Enregistrer{% else %}Créer l'employé{% endif %}
+          </button>
+          <a href="{% url 'employees:employee_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

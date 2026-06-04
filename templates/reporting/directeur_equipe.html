@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Mon équipe{% endblock %}
+{% block page_title %}Mon équipe{% endblock %}
+
+{% block content %}
+<div class="affectation-banner mb-3">
+  <i class="bi bi-people" style="color: var(--acep-green);"></i>
+  <strong>Direction :</strong>
+  {% for d in directions %}{{ d.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+  <span class="text-muted ms-2">·</span> {{ employee_stats|length }} employé{{ employee_stats|length|pluralize }}
+</div>
+
+<div class="card-section">
+  <h5><i class="bi bi-people"></i> Performance du mois en cours</h5>
+  <table class="table modern-table align-middle">
+    <thead>
+      <tr>
+        <th>Employé</th>
+        <th>Bureau</th>
+        <th>Heures (mois)</th>
+        <th>Jours</th>
+        <th>Retards</th>
+        <th>Anomalies</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in employee_stats %}
+        <tr>
+          <td><span class="avatar">{{ row.employee.initials }}</span>
+            <a href="{% url 'employees:employee_detail' row.employee.pk %}">{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</a>
+            <small class="text-muted d-block">{{ row.employee.position }}</small>
+          </td>
+          <td>{{ row.employee.bureau.code }}</td>
+          <td>{{ row.hours }}</td>
+          <td>{{ row.days }}</td>
+          <td>{% if row.retards > 0 %}<span class="badge bg-warning text-dark">{{ row.retards }}</span>{% else %}0{% endif %}</td>
+          <td>{% if row.anomalies > 0 %}<span class="badge bg-danger">{{ row.anomalies }}</span>{% else %}0{% endif %}</td>
+          <td><a href="{% url 'employees:employee_detail' row.employee.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-3">Aucun employé dans votre direction.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

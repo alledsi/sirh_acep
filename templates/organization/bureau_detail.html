@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ bureau.name }}{% endblock %}
+{% block page_title %}{{ bureau.code }} — {{ bureau.name }}{% endblock %}
+
+{% block content %}
+
+<div class="affectation-banner mb-3">
+  <span class="hierarchy-chip"><i class="bi bi-bank"></i> {{ bureau.agence.mutuelle.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-building"></i> {{ bureau.agence.name }}</span>
+  <span class="text-muted">›</span>
+  <span class="hierarchy-chip"><i class="bi bi-geo-alt"></i> <strong>{{ bureau.name }}</strong></span>
+  <span class="ms-3">
+    {% if bureau.is_active %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Inactif</span>{% endif %}
+  </span>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5><i class="bi bi-info-circle"></i> Informations</h5>
+      <table class="table">
+        <tr><th style="width:35%;">Code</th><td><code>{{ bureau.code }}</code></td></tr>
+        <tr><th>Nom</th><td>{{ bureau.name }}</td></tr>
+        <tr><th>Agence</th><td>{{ bureau.agence.name }} (<code>{{ bureau.agence.code }}</code>)</td></tr>
+        <tr><th>Mutuelle</th><td>{{ bureau.agence.mutuelle.name }}</td></tr>
+        <tr><th>Région</th><td>{{ bureau.agence.region|default:'—' }}</td></tr>
+        <tr><th>Adresse</th><td>{{ bureau.address|default:'—'|linebreaksbr }}</td></tr>
+        <tr><th>Créé le</th><td>{{ bureau.created_at|date:'d/m/Y H:i' }}</td></tr>
+        <tr><th>Modifié le</th><td>{{ bureau.updated_at|date:'d/m/Y H:i' }}</td></tr>
+      </table>
+      <a href="{% url 'organization:bureau_update' bureau.pk %}" class="btn-acep" style="width:auto; padding:8px 18px;">
+        <i class="bi bi-pencil"></i> Modifier
+      </a>
+      <a href="{% url 'organization:bureau_list' %}" class="btn btn-outline-secondary">Retour</a>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card-section">
+      <h5><i class="bi bi-shield-check"></i> Plages IP rattachées ({{ bureau.ip_mappings.count }})</h5>
+
+      <div class="alert alert-light border small">
+        <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+        Une connexion depuis l'une de ces plages sera automatiquement résolue vers <strong>{{ bureau.name }}</strong>.
+      </div>
+
+      {% if bureau.ip_mappings.all %}
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Plage IP</th><th>Description</th><th>Statut</th></tr>
+          </thead>
+          <tbody>
+            {% for mapping in bureau.ip_mappings.all %}
+              <tr>
+                <td><code>{{ mapping.ip_pattern }}</code></td>
+                <td>{{ mapping.description|default:'—' }}</td>
+                <td>
+                  {% if mapping.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="alert alert-warning small">
+          <i class="bi bi-exclamation-triangle"></i> Ce bureau n'a aucune plage IP rattachée. Aucun pointage ne pourra être associé à ce bureau tant qu'au moins une plage n'est pas définie.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Valider une anomalie{% endblock %}
+{% block page_title %}Valider une anomalie{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card-section">
+      <h5>
+        {% if anomaly.anomaly_type == 'LATE' %}<span class="badge bg-warning text-dark">Retard</span>
+        {% elif anomaly.anomaly_type == 'NO_DEPARTURE' %}<span class="badge bg-danger">Pas de départ</span>
+        {% elif anomaly.anomaly_type == 'LONG_BREAK' %}<span class="badge bg-info">Pause longue</span>
+        {% elif anomaly.anomaly_type == 'UNKNOWN_IP' %}<span class="badge bg-warning text-dark">IP inconnue</span>
+        {% elif anomaly.anomaly_type == 'INCOHERENCE_BUREAU' %}<span class="badge bg-info">Bureau ≠</span>{% endif %}
+        {{ anomaly.get_anomaly_type_display }}
+      </h5>
+      <table class="table">
+        <tr><th style="width:35%;">Employé</th><td>
+          <span class="avatar">{{ anomaly.time_entry.employee.initials }}</span>
+          <a href="{% url 'employees:employee_detail' anomaly.time_entry.employee.pk %}">{{ anomaly.time_entry.employee.user.get_full_name|default:anomaly.time_entry.employee.user.matricule }}</a>
+        </td></tr>
+        <tr><th>Date du pointage</th><td>{{ anomaly.time_entry.work_date|date:'l d F Y' }}</td></tr>
+        <tr><th>Détail</th><td>{{ anomaly.description }}</td></tr>
+        <tr><th>Sévérité</th><td>{{ anomaly.get_severity_display }}</td></tr>
+        <tr><th>Voir le pointage</th><td><a href="{% url 'attendance:time_entry_detail' anomaly.time_entry.pk %}">Détail du pointage</a></td></tr>
+      </table>
+
+      {% if anomaly.is_acknowledged %}
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i>
+          <strong>Validée</strong> par {{ anomaly.acknowledged_by.get_full_name|default:anomaly.acknowledged_by.matricule }} le {{ anomaly.acknowledged_at|date:'d/m/Y H:i' }}.
+          {% if anomaly.acknowledgement_note %}
+            <p class="mb-0 mt-2"><strong>Justification :</strong> {{ anomaly.acknowledgement_note }}</p>
+          {% endif %}
+        </div>
+        <a href="{% url 'reporting:anomaly_list' %}" class="btn btn-outline-secondary">Retour</a>
+      {% else %}
+        <hr>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">{{ form.note.label }}</label>
+            {{ form.note }}
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-check-circle"></i> Valider l'anomalie</button>
+            <a href="{% url 'reporting:anomaly_list' %}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
