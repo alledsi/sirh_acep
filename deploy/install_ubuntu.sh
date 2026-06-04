@@ -11,6 +11,8 @@ APP_USER="sirh"
 DB_NAME="sirh_acep"
 DB_USER="sirh_user"
 DB_PASSWORD="CHANGE_ME_AVANT_INSTALL"
+SERVER_IP="192.168.0.209"        # IP fixe du serveur sur le LAN ACEP
+APP_PORT="3636"                  # Port d'écoute Nginx (basculera vers 3535 après validation)
 
 # ============ 1. Mise à jour & paquets système ============
 echo ">>> Mise à jour du système"
@@ -63,7 +65,7 @@ if [ -f "${APP_DIR}/manage.py" ]; then
         sudo -u "${APP_USER}" sed -i "s|SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" "${APP_DIR}/.env"
         sudo -u "${APP_USER}" sed -i "s|DEBUG=.*|DEBUG=False|" "${APP_DIR}/.env"
         sudo -u "${APP_USER}" sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}|" "${APP_DIR}/.env"
-        sudo -u "${APP_USER}" sed -i "s|ALLOWED_HOSTS=.*|ALLOWED_HOSTS=pointage.acep.local,localhost,127.0.0.1|" "${APP_DIR}/.env"
+        sudo -u "${APP_USER}" sed -i "s|ALLOWED_HOSTS=.*|ALLOWED_HOSTS=${SERVER_IP},localhost,127.0.0.1|" "${APP_DIR}/.env"
         echo "    .env créé avec une SECRET_KEY aléatoire"
     fi
 
@@ -86,18 +88,20 @@ if [ -f "${APP_DIR}/deploy/gunicorn.service" ]; then
 fi
 
 # ============ 7. Nginx ============
-echo ">>> Configuration Nginx"
+echo ">>> Configuration Nginx (port ${APP_PORT})"
 if [ -f "${APP_DIR}/deploy/nginx.conf" ]; then
     cp "${APP_DIR}/deploy/nginx.conf" /etc/nginx/sites-available/sirh-acep
+    # Force le port d'écoute selon la variable APP_PORT (au cas où elle a été changée)
+    sed -i "s|^    listen [0-9]* default_server;|    listen ${APP_PORT} default_server;|" /etc/nginx/sites-available/sirh-acep
     ln -sf /etc/nginx/sites-available/sirh-acep /etc/nginx/sites-enabled/sirh-acep
     rm -f /etc/nginx/sites-enabled/default
     nginx -t && systemctl reload nginx
 fi
 
 # ============ 8. Firewall ============
-echo ">>> Configuration du firewall (UFW)"
+echo ">>> Configuration du firewall (UFW) — port ${APP_PORT}/tcp"
 ufw allow OpenSSH
-ufw allow 'Nginx Full'
+ufw allow "${APP_PORT}/tcp"
 ufw --force enable
 
 echo ""
@@ -106,7 +110,7 @@ echo "  Installation SIRH ACEP terminée"
 echo "================================================"
 echo "  Vérifier le service  : systemctl status sirh-acep"
 echo "  Voir les logs        : journalctl -u sirh-acep -f"
-echo "  URL                  : http://pointage.acep.local"
+echo "  URL                  : http://${SERVER_IP}:${APP_PORT}"
 echo ""
 echo "  N'oubliez pas :"
 echo "  - Configurer HTTPS (certificat SSL)"

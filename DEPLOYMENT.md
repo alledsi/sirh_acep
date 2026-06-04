@@ -10,8 +10,12 @@ Guide complet pour déployer l'application sur un serveur interne ACEP (Ubuntu 2
 
 - Serveur Ubuntu 22.04 LTS ou supérieur
 - Accès root ou sudo
-- Nom DNS interne (ex : `pointage.acep.local`) pointant vers ce serveur
+- **Adresse IP fixe du serveur** sur le réseau interne ACEP : `192.168.0.209`
+- **Port d'écoute** : `3636` (port de test ; sera basculé sur `3535` après validation de la direction)
+- URL d'accès depuis n'importe quel poste du LAN ACEP : <http://192.168.0.209:3636>
 - Connexion réseau interne ACEP (pas de VPN — voir contrainte fonctionnelle)
+
+> 💡 Pas besoin de DNS interne — l'IP fixe du serveur suffit. Pour changer le port plus tard (de 3636 vers 3535), il faut modifier **trois choses** : `listen` dans `/etc/nginx/sites-available/sirh-acep`, autoriser le nouveau port dans `ufw`, et **reload Nginx**. Procédure détaillée dans la section *Changement de port* en bas du document.
 
 ---
 
@@ -97,10 +101,12 @@ Compléter :
 ```
 SECRET_KEY=...                                # généré aléatoirement
 DEBUG=False
-ALLOWED_HOSTS=pointage.acep.local,127.0.0.1
+ALLOWED_HOSTS=192.168.0.209,127.0.0.1,localhost
 DATABASE_URL=postgres://sirh_user:MotDePasseSolide@localhost:5432/sirh_acep
 USE_X_FORWARDED_FOR=True
 ```
+
+> Le port (3636) **ne se met PAS** dans `ALLOWED_HOSTS` — Django ne valide que l'hôte, pas le port.
 
 Générer la `SECRET_KEY` :
 
@@ -142,28 +148,64 @@ sudo systemctl reload nginx
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 3636/tcp     # port d'accès à l'application
 sudo ufw enable
+sudo ufw status verbose
 ```
+
+> Pour basculer sur le port définitif `3535` plus tard, voir la section *Changement de port* en fin de document.
 
 ---
 
-## HTTPS (Let's Encrypt ou certificat interne)
+## HTTPS (optionnel)
 
-### Option A — Let's Encrypt (si serveur accessible depuis Internet)
+⚠️ **Let's Encrypt ne fonctionne PAS avec une IP** — il requiert un nom de domaine public résolvable. Si vous accédez à l'application par `http://192.168.0.209:3636` sans DNS, deux options :
+
+### Option A — Rester en HTTP (acceptable sur réseau interne)
+
+Comme l'application n'est joignable que depuis le LAN ACEP (pas d'accès Internet, pas de VPN), HTTP est techniquement suffisant. Le risque sniffing existe mais reste maîtrisé sur un réseau switché interne.
+
+### Option B — Certificat auto-signé (HTTPS interne)
+
+Génère un certificat valide 10 ans pour votre IP :
 
 ```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d pointage.acep.local
+sudo mkdir -p /etc/ssl/sirh
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout /etc/ssl/sirh/sirh.key \
+    -out /etc/ssl/sirh/sirh.crt \
+    -subj "/C=SN/ST=Dakar/L=Dakar/O=ACEP/CN=192.168.0.209" \
+    -addext "subjectAltName=IP:192.168.0.209"
+sudo chmod 600 /etc/ssl/sirh/sirh.key
 ```
 
-### Option B — Certificat interne ACEP
+Puis dans `/etc/nginx/sites-available/sirh-acep`, décommentez le bloc HTTPS et choisissez un port (par ex. `3637` pour HTTPS) :
 
-Placer le certificat et la clé dans `/etc/ssl/`, décommenter le bloc `server { listen 443 ... }` dans `/etc/nginx/sites-available/sirh-acep`, puis :
+```nginx
+server {
+    listen 3637 ssl http2;
+    server_name _;
+
+    ssl_certificate     /etc/ssl/sirh/sirh.crt;
+    ssl_certificate_key /etc/ssl/sirh/sirh.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # ... (recopier les blocs location / static / media du serveur HTTP)
+}
+```
+
+Ouvrir le port et reload :
 
 ```bash
+sudo ufw allow 3637/tcp
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+URL d'accès : `https://192.168.0.209:3637`. Les agents verront un avertissement "certificat non vérifié" à la première visite (normal pour un cert auto-signé) — ils peuvent l'accepter une fois.
+
+### Option C — Certificat interne ACEP (si votre DSI fournit une PKI)
+
+Si ACEP a une autorité de certification interne, demandez un certificat signé pour l'IP du serveur et placez `.crt`/`.key` dans `/etc/ssl/sirh/` puis configurez Nginx comme à l'option B. Aucun avertissement navigateur.
 
 ---
 
@@ -327,6 +369,33 @@ sudo systemctl status postgresql
 # Test de la configuration Django
 sudo -u sirh /opt/sirh_acep/.venv/bin/python /opt/sirh_acep/manage.py check --deploy --settings=config.settings.prod
 ```
+
+---
+
+## Changement de port (ex : 3636 → 3535)
+
+Une fois la validation de la direction obtenue, pour passer du port de test (`3636`) au port définitif (`3535`) :
+
+```bash
+# 1. Modifier la config Nginx
+sudo sed -i 's/listen 3636/listen 3535/' /etc/nginx/sites-available/sirh-acep
+
+# 2. Ouvrir le nouveau port et fermer l'ancien
+sudo ufw allow 3535/tcp
+sudo ufw delete allow 3636/tcp
+
+# 3. Tester la config et reload
+sudo nginx -t
+sudo systemctl reload nginx
+
+# 4. Vérifier
+sudo ufw status verbose
+curl -I http://192.168.0.209:3535
+```
+
+L'IP du serveur reste la même (`192.168.0.209`), aucune migration BDD n'est nécessaire, les pointages et données existantes sont intacts. Communiquez simplement aux agents la nouvelle URL : `http://192.168.0.209:3535`.
+
+> Si vous utilisez HTTPS auto-signé, le certificat reste valable (il est lié à l'IP, pas au port).
 
 ---
 
