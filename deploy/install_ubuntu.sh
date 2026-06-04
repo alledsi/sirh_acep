@@ -58,6 +58,13 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_user WHERE usename = '${DB_USER}'" |
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};"
 sudo -u postgres psql -c "ALTER USER ${DB_USER} CREATEDB;"  # nécessaire pour les tests
 
+# Sur PostgreSQL 15+, les utilisateurs n'ont plus le droit de créer des tables
+# dans le schéma `public` par défaut. On rend ${DB_USER} propriétaire du schéma
+# et de la base pour que Django puisse appliquer ses migrations.
+sudo -u postgres psql -d "${DB_NAME}" -c "GRANT ALL ON SCHEMA public TO ${DB_USER};"
+sudo -u postgres psql -d "${DB_NAME}" -c "ALTER SCHEMA public OWNER TO ${DB_USER};"
+sudo -u postgres psql -c "ALTER DATABASE ${DB_NAME} OWNER TO ${DB_USER};"
+
 # ============ 4. Code applicatif ============
 echo ">>> Préparation du dossier ${APP_DIR}"
 mkdir -p "${APP_DIR}" /var/log/sirh_acep
