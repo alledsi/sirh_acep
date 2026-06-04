@@ -1,5 +1,5 @@
 # SIRH ACEP — Dépendances
-# Python >= 3.11 recommandé
+# Python >= 3.10 (testé sur 3.10, 3.11, 3.12). Ubuntu 24.04 livre Python 3.12.
 
 Django>=5.1,<6.0
 django-environ>=0.11

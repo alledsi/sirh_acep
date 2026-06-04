@@ -51,8 +51,10 @@ Le script installe Python, PostgreSQL, Nginx, crée l'utilisateur système, la b
 
 ```bash
 sudo apt update && sudo apt upgrade -y
+# Ubuntu 22.04 → python3.10, 24.04 → python3.12. Le script install_ubuntu.sh
+# détecte automatiquement la version livrée par votre OS.
 sudo apt install -y \
-    python3.11 python3.11-venv python3-pip \
+    python3 python3-venv python3-pip \
     postgresql postgresql-contrib \
     nginx \
     git curl ufw \
@@ -84,7 +86,8 @@ EOF
 ```bash
 sudo -u sirh git clone <REPO_URL> /opt/sirh_acep
 cd /opt/sirh_acep
-sudo -u sirh python3.11 -m venv .venv
+# Utiliser la version Python livrée par l'OS (python3 = 3.12 sur 24.04, 3.10 sur 22.04)
+sudo -u sirh python3 -m venv .venv
 sudo -u sirh .venv/bin/pip install --upgrade pip
 sudo -u sirh .venv/bin/pip install -r requirements.txt
 ```

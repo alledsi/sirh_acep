@@ -18,9 +18,26 @@ APP_PORT="3636"                  # Port d'écoute Nginx (basculera vers 3535 apr
 echo ">>> Mise à jour du système"
 apt update && apt upgrade -y
 
+echo ">>> Détection de la version Python disponible"
+# Ubuntu 22.04 → python3.10, 24.04 → python3.12. On utilise la version livrée par l'OS.
+if command -v python3.12 >/dev/null; then
+    PYTHON_BIN="python3.12"
+    PYTHON_PKGS="python3.12 python3.12-venv"
+elif command -v python3.11 >/dev/null; then
+    PYTHON_BIN="python3.11"
+    PYTHON_PKGS="python3.11 python3.11-venv"
+elif command -v python3.10 >/dev/null; then
+    PYTHON_BIN="python3.10"
+    PYTHON_PKGS="python3.10 python3.10-venv"
+else
+    PYTHON_BIN="python3"
+    PYTHON_PKGS="python3 python3-venv"
+fi
+echo "    Python détecté : ${PYTHON_BIN}"
+
 echo ">>> Installation des paquets nécessaires"
 apt install -y \
-    python3.11 python3.11-venv python3-pip \
+    ${PYTHON_PKGS} python3-pip \
     postgresql postgresql-contrib \
     nginx \
     git curl ufw \
@@ -52,8 +69,8 @@ echo "    Exemple : sudo -u ${APP_USER} git clone <REPO_URL> ${APP_DIR}"
 
 # ============ 5. Virtualenv et dépendances ============
 if [ -f "${APP_DIR}/manage.py" ]; then
-    echo ">>> Création du virtualenv et installation"
-    sudo -u "${APP_USER}" python3.11 -m venv "${APP_DIR}/.venv"
+    echo ">>> Création du virtualenv (${PYTHON_BIN}) et installation"
+    sudo -u "${APP_USER}" "${PYTHON_BIN}" -m venv "${APP_DIR}/.venv"
     sudo -u "${APP_USER}" "${APP_DIR}/.venv/bin/pip" install --upgrade pip
     sudo -u "${APP_USER}" "${APP_DIR}/.venv/bin/pip" install -r "${APP_DIR}/requirements.txt"
 
