@@ -263,7 +263,7 @@ class EmployeeImportView(GlobalAccessRequiredMixin, View):
     def get(self, request):
         return render(request, self.template_name, {
             'default_password': DEFAULT_IMPORT_PASSWORD,
-            'columns': ['matricule', 'prenom', 'nom', 'direction', 'bureau', 'date_naissance', 'date_embauche'],
+            'columns': ['matricule', 'prenom', 'nom', 'poste', 'direction', 'bureau', 'date_naissance', 'date_embauche'],
         })
 
     def post(self, request):
@@ -292,6 +292,7 @@ class EmployeeImportView(GlobalAccessRequiredMixin, View):
             'matricule': ['matricule', 'mat', 'id'],
             'prenom': ['prenom', 'prénom', 'first_name', 'firstname'],
             'nom': ['nom', 'last_name', 'lastname', 'name'],
+            'poste': ['poste', 'fonction', 'position', 'job', 'job_title'],
             'direction': ['direction', 'service', 'dir'],
             'bureau': ['bureau', 'agence', 'site', 'bureau_affecté', 'bureau_affecte'],
             'date_naissance': ['date_naissance', 'naissance', 'birth_date', 'date naissance', 'datenaissance'],
@@ -321,6 +322,13 @@ class EmployeeImportView(GlobalAccessRequiredMixin, View):
 
             prenom = str(row[idx['prenom']]).strip() if row[idx['prenom']] else ''
             nom = str(row[idx['nom']]).strip() if row[idx['nom']] else ''
+
+            # Poste (texte libre — défaut "À renseigner" si vide)
+            poste = ''
+            if 'poste' in idx and row[idx['poste']]:
+                poste = str(row[idx['poste']]).strip()
+            if not poste:
+                poste = 'À renseigner'
 
             # Direction (code ou nom)
             direction = None
@@ -384,7 +392,7 @@ class EmployeeImportView(GlobalAccessRequiredMixin, View):
                         hire_date=hire_date,
                         bureau=bureau,
                         direction=direction,
-                        position='À renseigner',
+                        position=poste,
                     )
                 created += 1
             except Exception as e:
@@ -413,7 +421,7 @@ class EmployeeImportTemplateView(GlobalAccessRequiredMixin, View):
         ws = wb.active
         ws.title = 'Employés ACEP'
 
-        headers = ['matricule', 'prenom', 'nom', 'direction', 'bureau', 'date_naissance', 'date_embauche']
+        headers = ['matricule', 'prenom', 'nom', 'poste', 'direction', 'bureau', 'date_naissance', 'date_embauche']
         header_font = Font(bold=True, color='FFFFFF')
         header_fill = PatternFill(start_color='02564A', end_color='02564A', fill_type='solid')
         for col, h in enumerate(headers, 1):
@@ -423,18 +431,19 @@ class EmployeeImportTemplateView(GlobalAccessRequiredMixin, View):
             cell.alignment = Alignment(horizontal='center')
 
         # Ligne d'exemple
-        example = ['1042', 'Aliou', 'Niang', 'DIR-COM', 'BUR-VDN-01', '1990-05-15', '2020-01-15']
+        example = ['1042', 'Aliou', 'Niang', 'Chargé clientèle', 'DIR-COM', 'BUR-VDN-01', '1990-05-15', '2020-01-15']
         for col, v in enumerate(example, 1):
             ws.cell(row=2, column=col, value=v)
 
         # Notes en bas
         ws.cell(row=4, column=1, value="Notes :").font = Font(bold=True)
         ws.cell(row=5, column=1, value="• direction et bureau peuvent être donnés par CODE ou par NOM.")
-        ws.cell(row=6, column=1, value="• date_naissance et date_embauche au format YYYY-MM-DD ou DD/MM/YYYY.")
-        ws.cell(row=7, column=1, value="• Le mot de passe initial sera Acep@2026 (à changer au 1er login).")
-        ws.cell(row=8, column=1, value="• Les autres infos (rôles, poste, etc.) se modifient ensuite via la fiche employé.")
+        ws.cell(row=6, column=1, value="• poste = texte libre (ex : Caissier, Chargé clientèle, Directeur d'agence...).")
+        ws.cell(row=7, column=1, value="• date_naissance et date_embauche au format YYYY-MM-DD ou DD/MM/YYYY.")
+        ws.cell(row=8, column=1, value="• Le mot de passe initial sera Acep@2026 (à changer au 1er login).")
+        ws.cell(row=9, column=1, value="• Le rôle par défaut est AGENT (modifiable ensuite par la RH).")
 
-        for col, w in enumerate([12, 15, 15, 18, 18, 16, 16], 1):
+        for col, w in enumerate([12, 15, 15, 22, 18, 18, 16, 16], 1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
 
         response = HttpResponse(
