@@ -1,7 +1,7 @@
 """Admin Django du module Attendance."""
 from django.contrib import admin
 
-from .models import Anomaly, TimeEntry
+from .models import AbsenceJustification, Anomaly, TimeEntry
 
 
 class AnomalyInline(admin.TabularInline):
@@ -58,3 +58,12 @@ class AnomalyAdmin(admin.ModelAdmin):
     search_fields = ('time_entry__employee__user__matricule', 'description')
     autocomplete_fields = ('time_entry',)
     readonly_fields = ('anomaly_type', 'severity', 'description')
+
+
+@admin.register(AbsenceJustification)
+class AbsenceJustificationAdmin(admin.ModelAdmin):
+    list_display = ('absence_date', 'employee', 'justification_type', 'status', 'reviewed_by')
+    list_filter = ('status', 'justification_type', 'absence_date')
+    search_fields = ('employee__user__matricule', 'reason')
+    autocomplete_fields = ('employee', 'reviewed_by')
+    date_hierarchy = 'absence_date'

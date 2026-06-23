@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Supprimer le jour férié{% endblock %}
+{% block page_title %}Supprimer le jour férié{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <p>Confirmer la suppression du jour férié <strong>{{ object.name }}</strong> du {{ object.date|date:'d/m/Y' }} ?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Supprimer</button>
+    <a href="{% url 'planning:holiday_list' %}" class="btn btn-outline-secondary">Annuler</a>
+  </form>
+</div>
+{% endblock %}

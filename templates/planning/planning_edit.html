@@ -14,7 +14,7 @@
 </div>
 
 <div class="row mb-3">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="stat-card">
       <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-people"></i></div>
       <p class="label">Effectif concerné</p>
@@ -22,7 +22,7 @@
       <p class="trend text-success">Tous les employés ACEP</p>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <div class="stat-card">
       <div class="icon" style="background: #cfe2ff; color: #084298;"><i class="bi bi-stopwatch"></i></div>
       <p class="label">Tolérance retard</p>
@@ -30,7 +30,21 @@
       <p class="trend text-muted">Modifiable ci-dessous</p>
     </div>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background: #fff3cd; color: #664d03;"><i class="bi bi-calendar-x"></i></div>
+      <p class="label">Prochains jours fériés</p>
+      <p class="value" style="font-size:1rem;">
+        {% for h in upcoming_holidays %}
+          {{ h.date|date:'d/m' }} <small>{{ h.name|truncatechars:18 }}</small><br>
+        {% empty %}
+          <small class="text-muted">Aucun</small>
+        {% endfor %}
+      </p>
+      <p class="trend text-muted"><a href="{% url 'planning:holiday_list' %}">Gérer →</a></p>
+    </div>
+  </div>
+  <div class="col-md-3">
     <div class="stat-card">
       <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-clock-history"></i></div>
       <p class="label">Dernière mise à jour</p>

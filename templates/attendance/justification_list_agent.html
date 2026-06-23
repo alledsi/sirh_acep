@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Mes justifications{% endblock %}
+{% block page_title %}Mes justifications d'absence{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3">
+    <h5><i class="bi bi-file-earmark-text"></i> Mes justifications</h5>
+    <a href="{% url 'attendance:my_justifications_new' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouvelle justification
+    </a>
+  </div>
+
+  <div class="alert alert-light border small">
+    <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+    Déposez ici les certificats médicaux, courriers ou autres pièces justificatives en cas d'absence, retard ou départ anticipé. Votre directeur ou la RH les validera.
+  </div>
+
+  {% if justifications %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Date concernée</th>
+          <th>Type</th>
+          <th>Motif</th>
+          <th>Pièce jointe</th>
+          <th>Statut</th>
+          <th>Validée par</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in justifications %}
+          <tr>
+            <td>{{ j.absence_date|date:'d/m/Y' }}</td>
+            <td>{{ j.get_justification_type_display }}</td>
+            <td><small>{{ j.reason|truncatechars:80 }}</small></td>
+            <td>
+              {% if j.attachment %}<a href="{{ j.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i> Voir</a>
+              {% else %}<small class="text-muted">—</small>{% endif %}
+            </td>
+            <td>
+              {% if j.status == 'PENDING' %}<span class="badge bg-warning text-dark">En attente</span>
+              {% elif j.status == 'APPROVED' %}<span class="badge bg-success">Approuvée</span>
+              {% elif j.status == 'REJECTED' %}<span class="badge bg-danger">Rejetée</span>{% endif %}
+            </td>
+            <td>
+              {% if j.reviewed_by %}<small>{{ j.reviewed_by.get_full_name|default:j.reviewed_by.matricule }}<br>{{ j.reviewed_at|date:'d/m/Y' }}</small>{% else %}<small class="text-muted">—</small>{% endif %}
+              {% if j.review_note %}<small class="d-block text-muted"><em>{{ j.review_note }}</em></small>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-muted">Aucune justification déposée pour le moment.</p>
+  {% endif %}
+</div>
+{% endblock %}

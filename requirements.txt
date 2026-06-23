@@ -16,6 +16,9 @@ whitenoise>=6.6
 # Upload d'images (photos employés)
 Pillow>=10.2
 
+# Lecture / écriture des fichiers Excel (.xlsx) — import employés + export stats
+openpyxl>=3.1
+
 # Dev tools (optionnel — installe avec : pip install -r requirements-dev.txt)
 # django-debug-toolbar>=4.3
 # ruff>=0.4

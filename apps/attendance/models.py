@@ -70,6 +70,23 @@ class TimeEntry(BaseModel):
     )
     departure_ip = models.GenericIPAddressField('IP au départ', null=True, blank=True)
 
+    # ----- Régularisation manuelle (RH/DG) -----
+    is_regularized = models.BooleanField(
+        'Pointage régularisé manuellement', default=False,
+        help_text='Coché si la RH a modifié manuellement ce pointage (incident technique, oubli, etc.)',
+    )
+    regularization_reason = models.TextField(
+        'Motif de la régularisation', blank=True,
+        help_text='Motif détaillé : incident technique, oubli de pointage, etc.',
+    )
+    regularized_by = models.ForeignKey(
+        'core.User', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='regularizations',
+        verbose_name='Régularisé par',
+    )
+    regularized_at = models.DateTimeField('Régularisé le', null=True, blank=True)
+
     class Meta:
         verbose_name = 'Pointage'
         verbose_name_plural = 'Pointages'
@@ -174,3 +191,67 @@ class Anomaly(BaseModel):
 
     def __str__(self):
         return f"{self.get_anomaly_type_display()} — {self.time_entry}"
+
+
+class AbsenceJustification(BaseModel):
+    """Justification d'absence ou de retard soumise par un agent.
+
+    L'agent fournit un motif + une pièce jointe (certificat médical, etc.).
+    La RH/le directeur valide ou rejette la justification.
+    """
+    STATUS_PENDING = 'PENDING'
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_REJECTED = 'REJECTED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'En attente'),
+        (STATUS_APPROVED, 'Approuvée'),
+        (STATUS_REJECTED, 'Rejetée'),
+    ]
+
+    TYPE_ABSENCE = 'ABSENCE'
+    TYPE_LATE = 'LATE'
+    TYPE_EARLY = 'EARLY_DEPARTURE'
+    TYPE_OTHER = 'OTHER'
+    TYPE_CHOICES = [
+        (TYPE_ABSENCE, 'Absence'),
+        (TYPE_LATE, 'Retard'),
+        (TYPE_EARLY, 'Départ anticipé'),
+        (TYPE_OTHER, 'Autre'),
+    ]
+
+    employee = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.CASCADE,
+        related_name='justifications',
+        verbose_name='Employé',
+    )
+    absence_date = models.DateField('Date concernée', db_index=True)
+    justification_type = models.CharField(
+        'Type', max_length=20, choices=TYPE_CHOICES, default=TYPE_ABSENCE,
+    )
+    reason = models.TextField('Motif détaillé', help_text='Expliquer la raison.')
+    attachment = models.FileField(
+        'Pièce jointe',
+        upload_to='justifications/%Y/%m/',
+        blank=True, null=True,
+        help_text='Certificat médical, courrier, etc. (PDF, image)',
+    )
+    status = models.CharField(
+        'Statut', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING,
+    )
+    reviewed_by = models.ForeignKey(
+        'core.User', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='justifications_reviewed',
+        verbose_name='Validée par',
+    )
+    reviewed_at = models.DateTimeField('Validée le', null=True, blank=True)
+    review_note = models.TextField('Note du valideur', blank=True)
+
+    class Meta:
+        verbose_name = 'Justification d\'absence'
+        verbose_name_plural = 'Justifications d\'absence'
+        ordering = ['-absence_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.employee} — {self.absence_date:%d/%m/%Y} ({self.get_status_display()})"

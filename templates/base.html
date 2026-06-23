@@ -32,6 +32,9 @@
   <a href="{% url 'attendance:historique' %}" class="{% if request.resolver_match.url_name == 'historique' %}active{% endif %}">
     <i class="bi bi-calendar3"></i><span>Mon historique</span>
   </a>
+  <a href="{% url 'attendance:my_justifications' %}" class="{% if 'justification' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-file-earmark-text"></i><span>Mes justifications</span>
+  </a>
   <a href="{% url 'employees:my_profile' %}" class="{% if request.resolver_match.url_name == 'my_profile' or 'password_change' in request.resolver_match.url_name %}active{% endif %}">
     <i class="bi bi-person-circle"></i><span>Mon profil</span>
   </a>
@@ -66,11 +69,26 @@
   <a href="{% url 'organization:direction_list' %}" class="{% if 'direction' in request.resolver_match.url_name|default:'' %}active{% endif %}">
     <i class="bi bi-diagram-2"></i><span>Directions</span>
   </a>
-  <a href="{% url 'planning:edit' %}" class="{% if 'planning' in request.resolver_match.namespace|default:'' %}active{% endif %}">
+  <a href="{% url 'planning:edit' %}" class="{% if request.resolver_match.url_name == 'edit' %}active{% endif %}">
     <i class="bi bi-calendar2-week"></i><span>Plannings &amp; horaires</span>
+  </a>
+  <a href="{% url 'planning:holiday_list' %}" class="{% if 'holiday' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-calendar-x"></i><span>Jours fériés</span>
   </a>
   <a href="{% url 'reporting:rh_stats' %}" class="{% if request.resolver_match.url_name == 'rh_stats' %}active{% endif %}">
     <i class="bi bi-bar-chart"></i><span>Statistiques</span>
+  </a>
+  <a href="{% url 'reporting:daily_tracking' %}" class="{% if request.resolver_match.url_name == 'daily_tracking' %}active{% endif %}">
+    <i class="bi bi-calendar-day"></i><span>Suivi quotidien</span>
+  </a>
+  <a href="{% url 'reporting:monthly_hours' %}" class="{% if request.resolver_match.url_name == 'monthly_hours' %}active{% endif %}">
+    <i class="bi bi-clock-history"></i><span>Cumul horaire mensuel</span>
+  </a>
+  <a href="{% url 'attendance:regularize_list' %}" class="{% if 'regularize' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-wrench-adjustable"></i><span>Régularisations</span>
+  </a>
+  <a href="{% url 'attendance:justification_review_list' %}" class="{% if 'justification_review' in request.resolver_match.url_name|default:'' %}active{% endif %}">
+    <i class="bi bi-file-earmark-check"></i><span>Justifications à valider</span>
   </a>
   <a href="{% url 'reporting:anomaly_list' %}" class="{% if request.resolver_match.url_name == 'anomaly_list' %}active{% endif %}">
     <i class="bi bi-exclamation-octagon"></i><span>Anomalies globales</span>

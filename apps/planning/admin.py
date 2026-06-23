@@ -1,7 +1,7 @@
 """Admin Django du module Planning."""
 from django.contrib import admin
 
-from .models import DailySchedule, Planning
+from .models import DailySchedule, Holiday, Planning
 
 
 class DailyScheduleInline(admin.TabularInline):
@@ -22,3 +22,12 @@ class PlanningAdmin(admin.ModelAdmin):
 class DailyScheduleAdmin(admin.ModelAdmin):
     list_display = ('planning', 'day_of_week', 'mode', 'start_time', 'end_time', 'break_start', 'break_end')
     list_filter = ('planning', 'mode')
+
+
+@admin.register(Holiday)
+class HolidayAdmin(admin.ModelAdmin):
+    list_display = ('date', 'name', 'is_paid', 'is_active')
+    list_filter = ('is_active', 'is_paid')
+    search_fields = ('name',)
+    date_hierarchy = 'date'
+    ordering = ('-date',)

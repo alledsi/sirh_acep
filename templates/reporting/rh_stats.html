@@ -9,6 +9,14 @@
 
 {% block content %}
 
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <span class="text-muted small me-2">Exports Excel :</span>
+  <a href="{% url 'reporting:export_stats' %}?type=daily" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Aujourd'hui</a>
+  <a href="{% url 'reporting:export_stats' %}?type=weekly" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Cette semaine</a>
+  <a href="{% url 'reporting:export_stats' %}?type=monthly" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Ce mois</a>
+  <a href="{% url 'reporting:export_stats' %}?type=yearly" class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Cette année</a>
+</div>
+
 <div class="row mb-3">
   <div class="col-md-3">
     <div class="stat-card">

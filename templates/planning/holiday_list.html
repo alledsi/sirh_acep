@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Jours fériés{% endblock %}
+{% block page_title %}Jours fériés{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h5><i class="bi bi-calendar-x"></i> Jours fériés ({{ paginator.count }})</h5>
+    <a href="{% url 'planning:holiday_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouveau jour férié
+    </a>
+  </div>
+
+  <div class="alert alert-light border small">
+    <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+    Les <strong>jours fériés</strong> n'apparaissent pas comme jours d'absence. Si un employé pointe quand même, c'est compté en heures supplémentaires. Pas de retenue sur les jours fériés payés.
+  </div>
+
+  {% if holidays %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Nom</th>
+          <th>Description</th>
+          <th>Payé</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in holidays %}
+          <tr>
+            <td><strong>{{ h.date|date:'D d/m/Y' }}</strong></td>
+            <td>{{ h.name }}</td>
+            <td><small class="text-muted">{{ h.description|truncatechars:80 }}</small></td>
+            <td>{% if h.is_paid %}<span class="badge bg-success">Oui</span>{% else %}<span class="badge bg-secondary">Non</span>{% endif %}</td>
+            <td>{% if h.is_active %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Désactivé</span>{% endif %}</td>
+            <td>
+              <a href="{% url 'planning:holiday_update' h.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'planning:holiday_delete' h.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-calendar-x" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun jour férié enregistré.</p>
+      <a href="{% url 'planning:holiday_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+        <i class="bi bi-plus-lg"></i> Ajouter un jour férié
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

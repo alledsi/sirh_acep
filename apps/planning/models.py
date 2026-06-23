@@ -88,3 +88,27 @@ class DailySchedule(BaseModel):
         return self.mode == self.MODE_OPTIONAL
 
 
+class Holiday(BaseModel):
+    """Jour férié — ne génère pas d'anomalie d'absence ce jour-là.
+
+    Si un employé pointe quand même (heures supplémentaires), c'est autorisé.
+    Si l'employé ne pointe pas, aucune anomalie n'est créée.
+    """
+    name = models.CharField('Nom', max_length=200, help_text='Ex : Fête de l\'Indépendance')
+    date = models.DateField('Date', unique=True, db_index=True)
+    description = models.TextField('Description', blank=True)
+    is_paid = models.BooleanField('Férié payé', default=True, help_text='Si coché, pas de retenue.')
+    is_active = models.BooleanField('Actif', default=True)
+
+    class Meta:
+        verbose_name = 'Jour férié'
+        verbose_name_plural = 'Jours fériés'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.date:%d/%m/%Y} — {self.name}'
+
+    @classmethod
+    def is_holiday(cls, target_date: date) -> bool:
+        """True si la date est un jour férié actif."""
+        return cls.objects.filter(date=target_date, is_active=True).exists()

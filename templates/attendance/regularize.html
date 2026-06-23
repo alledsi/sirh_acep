@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Régularisation pointage{% endblock %}
+{% block page_title %}Régularisation manuelle d'un pointage{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="alert alert-warning border" style="border-left: 4px solid #c97a1e !important;">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>Régularisation manuelle :</strong> à utiliser uniquement en cas d'incident technique avéré ou d'oubli de pointage. Le motif est obligatoire et l'opération est tracée (auteur, date, motif).
+  </div>
+
+  {% if not entry %}
+    <h5><i class="bi bi-search"></i> Sélectionner un pointage à régulariser</h5>
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label small">Employé</label>
+        <select name="employee" class="form-select form-select-sm" required>
+          <option value="">-- Choisir un employé --</option>
+          {% for e in employees %}<option value="{{ e.pk }}">{{ e.user.matricule }} — {{ e.user.get_full_name|default:e.user.matricule }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">Date</label>
+        <input type="date" name="date" class="form-control form-control-sm" required>
+      </div>
+      <div class="col-md-2">
+        <button class="btn-acep" style="width:auto; padding:6px 14px;"><i class="bi bi-arrow-right-circle"></i> Continuer</button>
+      </div>
+    </form>
+
+  {% else %}
+    <h5><i class="bi bi-pencil-square"></i> {{ entry.employee.user.matricule }} — {{ entry.employee.user.get_full_name|default:entry.employee.user.matricule }} · {{ entry.work_date|date:'l d F Y' }}</h5>
+    {% if entry.is_regularized %}
+      <div class="alert alert-info"><i class="bi bi-info-circle"></i> Ce pointage a déjà été régularisé par {{ entry.regularized_by }} le {{ entry.regularized_at|date:'d/m/Y H:i' }}.<br><em>Motif précédent : {{ entry.regularization_reason }}</em></div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="pk" value="{{ entry.pk }}">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Arrivée (HH:MM)</label>
+          <input type="time" name="arrival_time" value="{{ entry.arrival_time|time:'H:i' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Début pause</label>
+          <input type="time" name="break_start" value="{{ entry.break_start|time:'H:i' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Fin pause</label>
+          <input type="time" name="break_end" value="{{ entry.break_end|time:'H:i' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Départ</label>
+          <input type="time" name="departure_time" value="{{ entry.departure_time|time:'H:i' }}" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Motif de la régularisation <span class="text-danger">*</span></label>
+          <textarea name="reason" rows="3" class="form-control" required placeholder="Ex : panne réseau le matin, oubli de pointage de départ, etc.">{{ entry.regularization_reason }}</textarea>
+        </div>
+      </div>
+      <hr class="my-3">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-check-circle"></i> Régulariser</button>
+        <a href="{% url 'attendance:regularize' %}" class="btn btn-outline-secondary">Annuler</a>
+        <a href="{% url 'attendance:regularize_list' %}" class="btn btn-outline-secondary ms-auto"><i class="bi bi-list"></i> Historique</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

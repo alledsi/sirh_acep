@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Nouvelle justification{% endblock %}
+{% block page_title %}Déposer une justification d'absence{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Date concernée <span class="text-danger">*</span></label>
+        <input type="date" name="absence_date" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Type</label>
+        <select name="justification_type" class="form-select">
+          {% for code, label in types %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Pièce jointe</label>
+        <input type="file" name="attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+        <small class="text-muted">Optionnel — certificat, courrier (PDF, image)</small>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Motif détaillé <span class="text-danger">*</span></label>
+        <textarea name="reason" rows="4" class="form-control" required placeholder="Expliquer la raison de l'absence ou du retard..."></textarea>
+      </div>
+    </div>
+    <hr class="my-3">
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;"><i class="bi bi-send"></i> Soumettre</button>
+      <a href="{% url 'attendance:my_justifications' %}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

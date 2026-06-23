@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Importer des employés{% endblock %}
+{% block page_title %}Importer des employés depuis Excel{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="alert alert-light border" style="border-left: 4px solid var(--acep-green) !important;">
+    <i class="bi bi-info-circle" style="color: var(--acep-green);"></i>
+    <strong>Import en masse depuis Excel.</strong> Téléchargez d'abord le modèle, remplissez-le, puis chargez-le.
+    Les employés sont créés avec :
+    <ul class="mb-1 mt-2">
+      <li>Mot de passe initial : <code>{{ default_password }}</code> (à changer à la 1ère connexion)</li>
+      <li>Rôle <strong>AGENT</strong> par défaut (modifiable ensuite par la RH)</li>
+      <li>Poste « À renseigner » (modifiable depuis la fiche employé)</li>
+      <li>Les matricules déjà existants sont <strong>ignorés</strong> (pas d'écrasement).</li>
+    </ul>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-6">
+      <h6><i class="bi bi-1-circle"></i> Télécharger le modèle Excel</h6>
+      <a href="{% url 'employees:employee_import_template' %}" class="btn btn-outline-success">
+        <i class="bi bi-file-earmark-excel"></i> Télécharger modele_import_employes.xlsx
+      </a>
+      <p class="text-muted small mt-2">Colonnes : {{ columns|join:', ' }}</p>
+    </div>
+
+    <div class="col-md-6">
+      <h6><i class="bi bi-2-circle"></i> Charger votre fichier rempli</h6>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="file" accept=".xlsx" class="form-control mb-2" required>
+        <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;">
+          <i class="bi bi-upload"></i> Importer
+        </button>
+        <a href="{% url 'employees:employee_list' %}" class="btn btn-outline-secondary">Annuler</a>
+      </form>
+    </div>
+  </div>
+
+  <div class="alert alert-light border small">
+    <strong>Format des dates accepté :</strong> <code>YYYY-MM-DD</code> (ex : 1990-05-15) ou <code>DD/MM/YYYY</code> (ex : 15/05/1990).<br>
+    <strong>Direction et Bureau :</strong> peuvent être indiqués par leur <strong>code</strong> (ex : DIR-COM, BUR-VDN-01) ou par leur <strong>nom complet</strong>.
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Justifications à valider{% endblock %}
+{% block page_title %}Justifications d'absence à valider{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link {% if only_pending %}active{% endif %}" href="?statut=pending">En attente</a></li>
+    <li class="nav-item"><a class="nav-link {% if not only_pending %}active{% endif %}" href="?statut=all">Toutes</a></li>
+  </ul>
+
+  {% if justifications %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Employé</th>
+          <th>Type</th>
+          <th>Motif</th>
+          <th>Pièce jointe</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in justifications %}
+          <tr>
+            <td><strong>{{ j.absence_date|date:'d/m/Y' }}</strong></td>
+            <td><code>{{ j.employee.user.matricule }}</code><br><small>{{ j.employee.user.get_full_name|default:'' }}</small></td>
+            <td>{{ j.get_justification_type_display }}</td>
+            <td><small>{{ j.reason|truncatechars:100 }}</small></td>
+            <td>
+              {% if j.attachment %}<a href="{{ j.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-paperclip"></i> Voir</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if j.status == 'PENDING' %}<span class="badge bg-warning text-dark">En attente</span>
+              {% elif j.status == 'APPROVED' %}<span class="badge bg-success">Approuvée</span>
+              {% else %}<span class="badge bg-danger">Rejetée</span>{% endif %}
+            </td>
+            <td>
+              {% if j.status == 'PENDING' %}
+                <form method="post" action="{% url 'attendance:justification_review' j.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="text" name="note" placeholder="Note (optionnelle)" class="form-control form-control-sm mb-1" style="width:200px;">
+                  <button name="action" value="approve" class="btn btn-sm btn-outline-success" onclick="return confirm('Approuver cette justification ?');"><i class="bi bi-check"></i></button>
+                  <button name="action" value="reject" class="btn btn-sm btn-outline-danger" onclick="return confirm('Rejeter cette justification ?');"><i class="bi bi-x"></i></button>
+                </form>
+              {% else %}
+                <small>par {{ j.reviewed_by.get_full_name|default:j.reviewed_by.matricule }} le {{ j.reviewed_at|date:'d/m/Y' }}</small>
+                {% if j.review_note %}<small class="d-block text-muted"><em>{{ j.review_note }}</em></small>{% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="text-muted text-center mt-4"><i class="bi bi-emoji-smile"></i> Aucune justification {% if only_pending %}en attente{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

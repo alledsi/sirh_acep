@@ -20,4 +20,14 @@ urlpatterns = [
     # Historique
     path('historique/', views.historique, name='historique'),
     path('pointage/<int:pk>/', views.time_entry_detail, name='time_entry_detail'),
+
+    # Régularisation (RH/DG)
+    path('regularisation/', views.TimeEntryRegularizeView.as_view(), name='regularize'),
+    path('regularisation/historique/', views.RegularizationListView.as_view(), name='regularize_list'),
+
+    # Justifications d'absence (agent + RH)
+    path('justifications/', views.MyJustificationListView.as_view(), name='my_justifications'),
+    path('justifications/nouvelle/', views.JustificationCreateView.as_view(), name='my_justifications_new'),
+    path('justifications/a-valider/', views.JustificationReviewListView.as_view(), name='justification_review_list'),
+    path('justifications/<int:pk>/valider/', views.JustificationReviewView.as_view(), name='justification_review'),
 ]

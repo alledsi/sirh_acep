@@ -10,7 +10,7 @@ from datetime import date, time, timedelta
 
 from django.db import transaction
 
-from .models import DailySchedule, Planning
+from .models import DailySchedule, Holiday, Planning
 
 
 _DEFAULT_DAILY_SETUP = [
@@ -53,11 +53,13 @@ def get_daily_schedule(target_date: date) -> DailySchedule | None:
 def can_punch_on(employee, target_date: date) -> tuple[bool, str]:
     """Indique si l'employé peut pointer à la date donnée selon le planning.
 
+    - Jour férié → pointage autorisé (heures supplémentaires permises)
     - Jour NOT_WORKED → pointage interdit (ex : dimanche)
-    - Jour MANDATORY ou OPTIONAL → pointage autorisé pour tout le monde
-      (MODE_OPTIONAL = jour ouvré libre, typiquement le samedi : l'employé
-      qui vient pointe, celui qui ne vient pas n'est pas pénalisé)
+    - Jour MANDATORY ou OPTIONAL → pointage autorisé
     """
+    # Jour férié : pointage permis (heures supp facultatives, pas obligatoires)
+    if Holiday.is_holiday(target_date):
+        return True, ""
     daily = get_daily_schedule(target_date)
     if not daily or daily.mode == DailySchedule.MODE_NOT_WORKED:
         return False, f"{daily.get_day_of_week_display() if daily else target_date.strftime('%A')} n'est pas un jour travaillé."

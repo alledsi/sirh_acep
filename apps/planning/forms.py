@@ -2,12 +2,13 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import DailySchedule, Planning
+from .models import DailySchedule, Holiday, Planning
 
 
 _TEXT = {'class': 'form-control'}
 _SELECT = {'class': 'form-select'}
 _TIME = {'class': 'form-control', 'type': 'time'}
+_DATE = {'class': 'form-control', 'type': 'date'}
 _CHECK = {'class': 'form-check-input'}
 
 
@@ -70,3 +71,16 @@ DailyScheduleFormSet = inlineformset_factory(
     form=DailyScheduleForm,
     extra=0, can_delete=False,
 )
+
+
+class HolidayForm(forms.ModelForm):
+    class Meta:
+        model = Holiday
+        fields = ['name', 'date', 'description', 'is_paid', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={**_TEXT, 'placeholder': 'Ex : Fête du Travail'}),
+            'date': forms.DateInput(attrs=_DATE, format='%Y-%m-%d'),
+            'description': forms.Textarea(attrs={**_TEXT, 'rows': 2}),
+            'is_paid': forms.CheckboxInput(attrs=_CHECK),
+            'is_active': forms.CheckboxInput(attrs=_CHECK),
+        }

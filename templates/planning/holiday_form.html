@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} jour férié{% endblock %}
+{% block page_title %}{% if object %}Modifier le jour férié{% else %}Nouveau jour férié{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <form method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">{{ form.date.label }} <span class="text-danger">*</span></label>
+        {{ form.date }}
+        {% if form.date.errors %}<div class="text-danger small">{{ form.date.errors }}</div>{% endif %}
+      </div>
+      <div class="col-md-8">
+        <label class="form-label">{{ form.name.label }} <span class="text-danger">*</span></label>
+        {{ form.name }}
+        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+      </div>
+      <div class="col-12">
+        <label class="form-label">{{ form.description.label }}</label>
+        {{ form.description }}
+      </div>
+      <div class="col-md-6">
+        <div class="form-check">{{ form.is_paid }} <label class="form-check-label">{{ form.is_paid.label }}</label></div>
+        <small class="text-muted">Si décoché, des retenues s'appliquent.</small>
+      </div>
+      <div class="col-md-6">
+        <div class="form-check">{{ form.is_active }} <label class="form-check-label">{{ form.is_active.label }}</label></div>
+      </div>
+    </div>
+
+    <hr class="my-4">
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;">
+        <i class="bi bi-check-circle"></i> Enregistrer
+      </button>
+      <a href="{% url 'planning:holiday_list' %}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
