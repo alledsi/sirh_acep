@@ -54,22 +54,47 @@
   </form>
 
   {% if employees %}
-  <div class="table-responsive">
+  <style>
+    /* Scroll horizontal avec 2 premières colonnes figées */
+    .employees-scroll { overflow-x: auto; }
+    .employees-scroll table { min-width: 1100px; }
+    .employees-scroll th.sticky-col,
+    .employees-scroll td.sticky-col {
+      position: sticky; background: #fff; z-index: 2;
+    }
+    .employees-scroll thead th.sticky-col { background: #f8f9fa; z-index: 3; }
+    .employees-scroll .sticky-col-1 { left: 0; min-width: 90px; }
+    .employees-scroll .sticky-col-2 { left: 90px; min-width: 240px;
+      box-shadow: 4px 0 6px -4px rgba(0,0,0,0.15); }
+    @media (max-width: 768px) {
+      .employees-scroll .sticky-col-2 { box-shadow: none; }
+    }
+  </style>
+  <div class="employees-scroll">
     <table class="table modern-table align-middle">
       <thead>
-        <tr><th>Mat.</th><th>Nom</th><th>Poste</th><th>Bureau</th><th>Direction</th><th>Rôles</th><th>Statut</th><th></th></tr>
+        <tr>
+          <th class="sticky-col sticky-col-1">Mat.</th>
+          <th class="sticky-col sticky-col-2">Nom</th>
+          <th>Poste</th>
+          <th>Bureau</th>
+          <th>Direction</th>
+          <th>Rôles</th>
+          <th>Statut</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         {% for e in employees %}
           <tr>
-            <td><code>{{ e.user.matricule }}</code></td>
-            <td>
+            <td class="sticky-col sticky-col-1"><code>{{ e.user.matricule }}</code></td>
+            <td class="sticky-col sticky-col-2">
               <span class="avatar">{{ e.initials }}</span>
               <a href="{% url 'employees:employee_detail' e.pk %}">{{ e.user.get_full_name|default:e.user.matricule }}</a>
             </td>
             <td>{{ e.position }}</td>
-            <td><small>{{ e.bureau.code }}</small></td>
-            <td><small>{{ e.direction.code }}</small></td>
+            <td>{{ e.bureau.name }}</td>
+            <td>{{ e.direction.name }}</td>
             <td>
               {% for r in e.user.roles %}
                 {% if r == 'AGENT' %}<span class="badge bg-success">A</span>
