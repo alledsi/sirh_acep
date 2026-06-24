@@ -250,7 +250,7 @@ class MyProfileView(LoginRequiredMixin, View):
 DEFAULT_IMPORT_PASSWORD = 'Acep@2026'
 
 
-# ============ Modification de l'email par l'employé lui-même ============
+# ============ Modification email/téléphone par l'employé lui-même ============
 
 class MyEmailUpdateView(LoginRequiredMixin, View):
     """Permet à l'utilisateur connecté de modifier UNIQUEMENT son email."""
@@ -259,7 +259,6 @@ class MyEmailUpdateView(LoginRequiredMixin, View):
         new_email = (request.POST.get('email') or '').strip()
         user = request.user
 
-        # Validation basique
         if new_email:
             from django.core.validators import validate_email
             from django.core.exceptions import ValidationError as DjangoValidationError
@@ -272,6 +271,29 @@ class MyEmailUpdateView(LoginRequiredMixin, View):
         user.email = new_email
         user.save(update_fields=['email'])
         messages.success(request, "Votre email a été mis à jour.")
+        return redirect('employees:my_profile')
+
+
+class MyPhoneUpdateView(LoginRequiredMixin, View):
+    """Permet à l'utilisateur connecté de modifier UNIQUEMENT son téléphone."""
+
+    def post(self, request):
+        import re
+        new_phone = (request.POST.get('phone') or '').strip()
+        user = request.user
+
+        if new_phone:
+            # Format simple : chiffres, espaces, +, - et () autorisés. 8-30 caractères.
+            if not re.match(r'^[\d\s+\-()]{8,30}$', new_phone):
+                messages.error(
+                    request,
+                    "Numéro invalide. Utilisez chiffres, espaces, + ou - (8 caractères minimum)."
+                )
+                return redirect('employees:my_profile')
+
+        user.phone = new_phone
+        user.save(update_fields=['phone'])
+        messages.success(request, "Votre numéro de téléphone a été mis à jour.")
         return redirect('employees:my_profile')
 
 
@@ -462,11 +484,11 @@ class EmployeeImportTemplateView(GlobalAccessRequiredMixin, View):
 
         # Notes en bas
         ws.cell(row=4, column=1, value="Notes :").font = Font(bold=True)
-        ws.cell(row=5, column=1, value="• direction et bureau peuvent être donnés par CODE ou par NOM.")
-        ws.cell(row=6, column=1, value="• poste = texte libre (ex : Caissier, Chargé clientèle, Directeur d'agence...).")
-        ws.cell(row=7, column=1, value="• date_naissance et date_embauche au format YYYY-MM-DD ou DD/MM/YYYY.")
-        ws.cell(row=8, column=1, value="• Le mot de passe initial sera Acep@2026 (à changer au 1er login).")
-        ws.cell(row=9, column=1, value="• Le rôle par défaut est AGENT (modifiable ensuite par la RH).")
+        ws.cell(row=5, column=1, value="* direction et bureau : par code ou par nom complet.")
+        ws.cell(row=6, column=1, value="* poste : texte libre (ex Caissier, Charge clientele, Directeur agence...).")
+        ws.cell(row=7, column=1, value="* date_naissance et date_embauche au format YYYY-MM-DD ou DD/MM/YYYY.")
+        ws.cell(row=8, column=1, value="* Mot de passe initial : Acep@2026 (a changer au 1er login).")
+        ws.cell(row=9, column=1, value="* Role par defaut : AGENT (modifiable ensuite par la RH).")
 
         for col, w in enumerate([12, 15, 15, 22, 18, 18, 16, 16], 1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
@@ -477,5 +499,3 @@ class EmployeeImportTemplateView(GlobalAccessRequiredMixin, View):
         response['Content-Disposition'] = 'attachment; filename="modele_import_employes.xlsx"'
         wb.save(response)
         return response
-
-
