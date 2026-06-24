@@ -26,6 +26,12 @@
       </select>
     </div>
     <div class="col-md-2">
+      <select name="agence" class="form-select form-select-sm">
+        <option value="">Agence</option>
+        {% for a in agences %}<option value="{{ a.pk }}" {% if filters.agence == a.pk|stringformat:'s' %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
       <select name="bureau" class="form-select form-select-sm">
         <option value="">Bureau</option>
         {% for b in bureaux %}<option value="{{ b.pk }}" {% if filters.bureau == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
@@ -43,13 +49,16 @@
         {% for code, label in role_choices %}<option value="{{ code }}" {% if filters.role == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-md-2 d-flex gap-1">
-      <select name="statut" class="form-select form-select-sm">
+    <div class="col-md-12 d-flex gap-2 align-items-center">
+      <select name="statut" class="form-select form-select-sm" style="max-width: 180px;">
         <option value="all" {% if filters.statut == 'all' %}selected{% endif %}>Tous</option>
         <option value="active" {% if filters.statut == 'active' %}selected{% endif %}>Actifs</option>
         <option value="inactive" {% if filters.statut == 'inactive' %}selected{% endif %}>Inactifs</option>
       </select>
-      <button class="btn btn-sm btn-outline-success"><i class="bi bi-funnel"></i></button>
+      <button class="btn btn-sm btn-outline-success"><i class="bi bi-funnel"></i> Filtrer</button>
+      {% if filters.q or filters.mutuelle or filters.agence or filters.bureau or filters.direction or filters.role or filters.statut != 'all' %}
+        <a href="{% url 'employees:employee_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> Réinitialiser</a>
+      {% endif %}
     </div>
   </form>
 
