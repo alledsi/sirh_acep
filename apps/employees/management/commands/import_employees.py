@@ -109,6 +109,14 @@ class Command(BaseCommand):
             '--check-bureaux', action='store_true',
             help='Liste les bureaux du fichier et indique ceux qui ne matchent pas la base. N\'importe rien.',
         )
+        parser.add_argument(
+            '--default-bureau', type=str, default='DIRECTION GENERALE',
+            help='Nom (ou code) du bureau utilisé en fallback si le bureau du fichier ne matche pas. Défaut : "DIRECTION GENERALE".',
+        )
+        parser.add_argument(
+            '--fuzzy-threshold', type=float, default=0.85,
+            help='Seuil de ressemblance (0-1) pour accepter automatiquement un bureau proche. Défaut : 0.85.',
+        )
 
     def handle(self, *args, **options):
         try:
@@ -246,11 +254,70 @@ class Command(BaseCommand):
                 ))
             return
 
+        # Recherche du bureau par défaut (fallback)
+        default_bureau_label = options['default_bureau']
+        fuzzy_threshold = float(options['fuzzy_threshold'])
+        default_bureau = (
+            Bureau.objects.filter(name__iexact=default_bureau_label).first()
+            or Bureau.objects.filter(code__iexact=default_bureau_label).first()
+        )
+        if not default_bureau:
+            # Recherche fuzzy
+            db_norms_init = [(_normalize(b.name), b) for b in Bureau.objects.all()]
+            best = None
+            best_score = 0
+            target = _normalize(default_bureau_label)
+            for db_key, b in db_norms_init:
+                score = SequenceMatcher(None, target, db_key).ratio()
+                if score > best_score:
+                    best_score = score
+                    best = b
+            if best and best_score >= 0.7:
+                default_bureau = best
+                self.stdout.write(self.style.WARNING(
+                    f'Bureau par défaut (fallback) résolu par ressemblance ({int(best_score*100)}%) : '
+                    f'{default_bureau.code} — {default_bureau.name}'
+                ))
+        if not default_bureau:
+            raise CommandError(
+                f'Bureau de fallback introuvable : "{default_bureau_label}". '
+                f'Créer ce bureau en base ou passer --default-bureau "<code ou nom existant>".'
+            )
+        else:
+            self.stdout.write(self.style.NOTICE(
+                f'Bureau de fallback : {default_bureau.code} — {default_bureau.name} '
+                f'(seuil fuzzy : {int(fuzzy_threshold*100)}%)'
+            ))
+
+        # Pré-calcule la liste normalisée pour la recherche fuzzy
+        db_norm_list = [(_normalize(b.name), b) for b in Bureau.objects.all()]
+
+        def _find_bureau(label: str):
+            """Renvoie (bureau, score, kind) :
+              - kind='exact' si match exact (normalisé) sur nom ou code
+              - kind='fuzzy' si match >= fuzzy_threshold
+              - kind='fallback' avec bureau par défaut sinon ; score=0
+            """
+            key = _normalize(label)
+            if key in existing_bureaux:
+                return (existing_bureaux[key], 1.0, 'exact')
+            if key in existing_bureaux_by_code:
+                return (existing_bureaux_by_code[key], 1.0, 'exact')
+            best_score, best = 0.0, None
+            for db_key, b in db_norm_list:
+                score = SequenceMatcher(None, key, db_key).ratio()
+                if score > best_score:
+                    best_score, best = score, b
+            if best and best_score >= fuzzy_threshold:
+                return (best, best_score, 'fuzzy')
+            return (default_bureau, 0.0, 'fallback')
+
         created_users = 0
         skipped_existing = 0
         created_directions = 0
+        fuzzy_used = []         # (matricule, label_file, bureau_resolu, score)
+        fallback_used = []      # (matricule, label_file_inconnu)
         errors = []
-        unmatched_bureaux = set()
 
         for row_num, row in enumerate(rows[1:], start=2):
             if not row or row[idx['matricule']] is None:
@@ -294,22 +361,19 @@ class Command(BaseCommand):
                 errors.append(f'Ligne {row_num} ({matricule}) : direction manquante.')
                 continue
 
-            # Bureau : recherche stricte en base (jamais créé ici)
-            bureau = None
+            # Bureau : match exact > fuzzy ≥ seuil > fallback (bureau par défaut)
             if 'bureau' in idx and row[idx['bureau']]:
                 b_label = str(row[idx['bureau']]).strip()
-                b_key = _normalize(b_label)
-                if b_key in existing_bureaux:
-                    bureau = existing_bureaux[b_key]
-                elif b_key in existing_bureaux_by_code:
-                    bureau = existing_bureaux_by_code[b_key]
-                else:
-                    unmatched_bureaux.add(b_label)
-                    errors.append(f'Ligne {row_num} ({matricule}) : bureau "{b_label}" non trouvé en base.')
-                    continue
+                bureau, score, kind = _find_bureau(b_label)
+                if kind == 'fuzzy':
+                 if kind == 'fuzzy':
+                    fuzzy_used.append((matricule, b_label, bureau, score))
+                elif kind == 'fallback':
+                    fallback_used.append((matricule, b_label))
             else:
-                errors.append(f'Ligne {row_num} ({matricule}) : bureau vide.')
-                continue
+                # Bureau vide → fallback aussi (au lieu de rejeter l'employé)
+                bureau = default_bureau
+                fallback_used.append((matricule, '(vide)'))
 
             birth_date = _parse_date(row[idx['date_naissance']]) if 'date_naissance' in idx else None
             hire_date = _parse_date(row[idx['date_embauche']]) if 'date_embauche' in idx else None
@@ -345,29 +409,49 @@ class Command(BaseCommand):
             except Exception as e:
                 errors.append(f'Ligne {row_num} ({matricule}) : {e}')
 
-        # Rapport
-        self.stdout.write(self.style.SUCCESS(f'\n=== Rapport d\'import ==='))
-        self.stdout.write(f'Employés créés         : {created_users}')
-        self.stdout.write(f'Matricules déjà connus : {skipped_existing}')
-        self.stdout.write(f'Directions créées      : {created_directions}')
-        if unmatched_bureaux:
-            self.stdout.write(self.style.ERROR(
-                f'\n✗ Bureaux du fichier non trouvés en base ({len(unmatched_bureaux)}) :'
-            ))
-            for b in sorted(unmatched_bureaux):
-                self.stdout.write(f'  • {b}')
+        # ===== Rapport final =====
+        self.stdout.write(self.style.SUCCESS('\n=== Rapport d\'import ==='))
+        self.stdout.write(f'Employés créés                    : {created_users}')
+        self.stdout.write(f'Matricules déjà connus (ignorés)  : {skipped_existing}')
+        self.stdout.write(f'Directions créées                 : {created_directions}')
+        self.stdout.write(f'Bureaux résolus par ressemblance  : {len(fuzzy_used)}')
+        self.stdout.write(f'Bureaux mis sur le fallback       : {len(fallback_used)}')
+
+        if fuzzy_used:
             self.stdout.write(self.style.WARNING(
-                'Lancer d\'abord :   python manage.py import_employees --check-bureaux'
-                '\nPuis corriger les noms côté fichier ou côté base avant de relancer.'
+                '\n≈ Employés assignés par RESSEMBLANCE (à valider) :'
             ))
+            for mat, label, b, score in fuzzy_used[:30]:
+                pct = int(round(score * 100))
+                self.stdout.write(f'  • {mat:5}  {pct}%  "{label}" → {b.code} ({b.name})')
+            if len(fuzzy_used) > 30:
+                self.stdout.write(f'  ... +{len(fuzzy_used) - 30} autres')
+
+        if fallback_used:
+            self.stdout.write(self.style.ERROR(
+                f'\n✗ Employés mis sur le bureau de FALLBACK '
+                f'« {default_bureau.code} — {default_bureau.name} » (à corriger ensuite) :'
+            ))
+            for mat, label in fallback_used[:50]:
+                self.stdout.write(f'  • {mat:5}  fichier : "{label}"')
+            if len(fallback_used) > 50:
+                self.stdout.write(f'  ... +{len(fallback_used) - 50} autres')
+            self.stdout.write(self.style.WARNING(
+                '\nPour retrouver ces employés et corriger leur bureau plus tard :'
+                f'\n  → Annuaire des employés, filtrer par bureau "{default_bureau.name}".'
+            ))
+
         if errors:
-            self.stdout.write(self.style.WARNING(f'\nErreurs détaillées ({len(errors)}) :'))
+            self.stdout.write(self.style.WARNING(f'\nAutres erreurs ({len(errors)}) :'))
             for e in errors[:20]:
                 self.stdout.write(f'  - {e}')
             if len(errors) > 20:
                 self.stdout.write(f'  ... et {len(errors) - 20} autres.')
+
         if dry:
-            self.stdout.write(self.style.WARNING('\nDRY-RUN : aucune donnée écrite. Relancer sans --dry-run pour appliquer.'))
+            self.stdout.write(self.style.WARNING(
+                '\nDRY-RUN : aucune donnée écrite. Relancer sans --dry-run pour appliquer.'
+            ))
         else:
             self.stdout.write(self.style.SUCCESS(
                 f'\nMot de passe initial pour tous : {DEFAULT_PASSWORD}'
