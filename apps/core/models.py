@@ -68,7 +68,9 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = 'matricule'
-    REQUIRED_FIELDS = ['email', 'first_name', 'last_name']
+    # email n'est plus obligatoire (la majorité des employés ACEP n'en ont pas
+    # encore en base). Restera demandé interactivement seulement par createsuperuser.
+    REQUIRED_FIELDS = ['first_name', 'last_name']
 
     objects = UserManager()
 
