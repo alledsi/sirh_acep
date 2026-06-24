@@ -39,8 +39,9 @@
             {% if form.last_name.errors %}<div class="text-danger small">{{ form.last_name.errors }}</div>{% endif %}
           </div>
           <div class="col-md-7">
-            <label class="form-label">{{ form.email.label }} <span class="text-danger">*</span></label>
+            <label class="form-label">{{ form.email.label }}</label>
             {{ form.email }}
+            <small class="text-muted">Optionnel — l'employé pourra l'ajouter depuis son profil.</small>
             {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
           </div>
           <div class="col-md-5">

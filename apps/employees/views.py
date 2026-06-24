@@ -250,6 +250,31 @@ class MyProfileView(LoginRequiredMixin, View):
 DEFAULT_IMPORT_PASSWORD = 'Acep@2026'
 
 
+# ============ Modification de l'email par l'employé lui-même ============
+
+class MyEmailUpdateView(LoginRequiredMixin, View):
+    """Permet à l'utilisateur connecté de modifier UNIQUEMENT son email."""
+
+    def post(self, request):
+        new_email = (request.POST.get('email') or '').strip()
+        user = request.user
+
+        # Validation basique
+        if new_email:
+            from django.core.validators import validate_email
+            from django.core.exceptions import ValidationError as DjangoValidationError
+            try:
+                validate_email(new_email)
+            except DjangoValidationError:
+                messages.error(request, "Adresse email invalide.")
+                return redirect('employees:my_profile')
+
+        user.email = new_email
+        user.save(update_fields=['email'])
+        messages.success(request, "Votre email a été mis à jour.")
+        return redirect('employees:my_profile')
+
+
 class EmployeeImportView(GlobalAccessRequiredMixin, View):
     """Permet à la RH d'importer en masse des employés depuis un fichier Excel.
 

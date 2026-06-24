@@ -37,7 +37,7 @@ class EmployeeCreateForm(forms.Form):
     )
     first_name = forms.CharField(label='Prénom', max_length=150, widget=forms.TextInput(attrs=_TEXT))
     last_name = forms.CharField(label='Nom', max_length=150, widget=forms.TextInput(attrs=_TEXT))
-    email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs=_TEXT))
+    email = forms.EmailField(label='Email', required=False, widget=forms.EmailInput(attrs=_TEXT))
     phone = forms.CharField(label='Téléphone', max_length=30, required=False, widget=forms.TextInput(attrs=_TEXT))
     roles = forms.MultipleChoiceField(
         label='Rôles',
@@ -102,7 +102,7 @@ class EmployeeCreateForm(forms.Form):
         data = self.cleaned_data
         user = User.objects.create_user(
             matricule=data['matricule'],
-            email=data['email'],
+            email=data.get('email') or None,
             password=data['password'],
             first_name=data['first_name'],
             last_name=data['last_name'],
@@ -135,7 +135,7 @@ class EmployeeUpdateForm(forms.Form):
     )
     first_name = forms.CharField(label='Prénom', max_length=150, widget=forms.TextInput(attrs=_TEXT))
     last_name = forms.CharField(label='Nom', max_length=150, widget=forms.TextInput(attrs=_TEXT))
-    email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs=_TEXT))
+    email = forms.EmailField(label='Email', required=False, widget=forms.EmailInput(attrs=_TEXT))
     phone = forms.CharField(label='Téléphone', max_length=30, required=False, widget=forms.TextInput(attrs=_TEXT))
     roles = forms.MultipleChoiceField(
         label='Rôles',
@@ -201,7 +201,7 @@ class EmployeeUpdateForm(forms.Form):
         user = emp.user
         user.first_name = data['first_name']
         user.last_name = data['last_name']
-        user.email = data['email']
+        user.email = data.get('email') or ''
         user.phone = data.get('phone') or ''
         user.roles = list(data['roles'])
         user.is_active = data.get('is_user_active', False)
