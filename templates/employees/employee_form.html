@@ -4,10 +4,19 @@
 {% block page_title %}{% if mode == 'update' %}Modifier {{ employee.user.get_full_name }}{% else %}Nouvel employé{% endif %}{% endblock %}
 
 {% block content %}
+
+{% if request.GET.back %}
+  <a href="{{ request.GET.back }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Retour à la liste
+  </a>
+{% endif %}
+
 <div class="row">
   <div class="col-md-10 mx-auto">
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
+      {# Préserve le back pour qu'après save on revienne au bon endroit #}
+      {% if request.GET.back %}<input type="hidden" name="back" value="{{ request.GET.back }}">{% endif %}
 
       <div class="card-section">
         <h5><i class="bi bi-person-vcard"></i> Compte utilisateur (connexion)</h5>

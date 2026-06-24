@@ -4,6 +4,17 @@
 {% block page_title %}Fiche employé{% endblock %}
 
 {% block content %}
+
+{% if request.GET.back %}
+  <a href="{{ request.GET.back }}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Retour à la liste
+  </a>
+{% else %}
+  <a href="{% url 'employees:employee_list' %}" class="btn btn-outline-secondary btn-sm mb-3">
+    <i class="bi bi-arrow-left"></i> Retour à l'annuaire
+  </a>
+{% endif %}
+
 <div class="row">
   <div class="col-md-4">
     <div class="card-section text-center">

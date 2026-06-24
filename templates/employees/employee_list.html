@@ -28,7 +28,7 @@
     <div class="col-md-2">
       <select name="bureau" class="form-select form-select-sm">
         <option value="">Bureau</option>
-        {% for b in bureaux %}<option value="{{ b.pk }}" {% if filters.bureau == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.code }}</option>{% endfor %}
+        {% for b in bureaux %}<option value="{{ b.pk }}" {% if filters.bureau == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
       </select>
     </div>
     <div class="col-md-2">
@@ -90,7 +90,7 @@
             <td class="sticky-col sticky-col-1"><code>{{ e.user.matricule }}</code></td>
             <td class="sticky-col sticky-col-2">
               <span class="avatar">{{ e.initials }}</span>
-              <a href="{% url 'employees:employee_detail' e.pk %}">{{ e.user.get_full_name|default:e.user.matricule }}</a>
+              <a href="{% url 'employees:employee_detail' e.pk %}?back={{ request.get_full_path|urlencode }}">{{ e.user.get_full_name|default:e.user.matricule }}</a>
             </td>
             <td>{{ e.position }}</td>
             <td>{{ e.bureau.name }}</td>
@@ -105,8 +105,8 @@
             </td>
             <td>{% if e.is_active %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Inactif</span>{% endif %}</td>
             <td>
-              <a href="{% url 'employees:employee_detail' e.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
-              <a href="{% url 'employees:employee_update' e.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'employees:employee_detail' e.pk %}?back={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'employees:employee_update' e.pk %}?back={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
             </td>
           </tr>
         {% endfor %}

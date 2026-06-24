@@ -171,6 +171,16 @@ class EmployeeUpdateView(GlobalAccessRequiredMixin, FormView):
         with transaction.atomic():
             employee = form.save()
         messages.success(self.request, f"Employé {employee.user.matricule} mis à jour.")
+        # Préserve le back si fourni — sinon retour sur la fiche
+        back = self.request.POST.get('back') or self.request.GET.get('back')
+        if back:
+            from urllib.parse import urlparse
+            # Sécurité : on n'autorise que les chemins relatifs
+            if back.startswith('/') and not back.startswith('//'):
+                # Reconstruit l'URL avec ?back= conservé pour la fiche détail
+                detail_url = reverse_lazy('employees:employee_detail', kwargs={'pk': employee.pk})
+                from urllib.parse import quote
+                return redirect(f"{detail_url}?back={quote(back)}")
         return redirect('employees:employee_detail', pk=employee.pk)
 
 

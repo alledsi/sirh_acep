@@ -29,7 +29,7 @@
       {% for row in employee_stats %}
         <tr>
           <td><span class="avatar">{{ row.employee.initials }}</span>
-            <a href="{% url 'employees:employee_detail' row.employee.pk %}">{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</a>
+            <a href="{% url 'employees:employee_detail' row.employee.pk %}?back={{ request.get_full_path|urlencode }}">{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</a>
             <small class="text-muted d-block">{{ row.employee.position }}</small>
           </td>
           <td>{{ row.employee.bureau.code }}</td>
@@ -37,7 +37,7 @@
           <td>{{ row.days }}</td>
           <td>{% if row.retards > 0 %}<span class="badge bg-warning text-dark">{{ row.retards }}</span>{% else %}0{% endif %}</td>
           <td>{% if row.anomalies > 0 %}<span class="badge bg-danger">{{ row.anomalies }}</span>{% else %}0{% endif %}</td>
-          <td><a href="{% url 'employees:employee_detail' row.employee.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+          <td><a href="{% url 'employees:employee_detail' row.employee.pk %}?back={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
         </tr>
       {% empty %}
         <tr><td colspan="7" class="text-center text-muted py-3">Aucun employé dans votre direction.</td></tr>
