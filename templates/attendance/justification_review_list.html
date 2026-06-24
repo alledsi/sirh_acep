@@ -61,5 +61,7 @@
   {% else %}
     <p class="text-muted text-center mt-4"><i class="bi bi-emoji-smile"></i> Aucune justification {% if only_pending %}en attente{% endif %}.</p>
   {% endif %}
+
+  {% include '_pagination.html' %}
 </div>
 {% endblock %}

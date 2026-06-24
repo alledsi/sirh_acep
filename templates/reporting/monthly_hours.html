@@ -39,7 +39,7 @@
   </form>
 
   <div class="alert alert-light border">
-    <strong>{{ start|date:'d/m/Y' }} → {{ end|date:'d/m/Y' }}</strong> · Cumul global : <strong>{{ total_hours_all }}</strong> sur {{ rows|length }} employé(s)
+    <strong>{{ start|date:'d/m/Y' }} → {{ end|date:'d/m/Y' }}</strong> · Cumul global : <strong>{{ total_hours_all }}</strong> sur {{ rows_count }} employé(s)
   </div>
 
   <div class="table-responsive">
@@ -68,5 +68,7 @@
       </tbody>
     </table>
   </div>
+
+  {% include '_pagination.html' %}
 </div>
 {% endblock %}

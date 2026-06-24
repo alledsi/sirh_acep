@@ -114,8 +114,17 @@ class DirecteurEquipeView(DirecteurRequiredMixin, View):
                 'anomalies': anomalies,
             })
 
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(employee_stats, 30)
+        page_obj = paginator.get_page(request.GET.get('page'))
+
         return render(request, self.template_name, {
-            'employee_stats': employee_stats,
+            'employee_stats': page_obj.object_list,
+            'employee_stats_count': paginator.count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
             'directions': get_directeur_directions(request.user),
         })
 
@@ -124,10 +133,17 @@ class DirecteurAnomaliesView(DirecteurRequiredMixin, View):
     template_name = 'reporting/anomaly_list.html'
 
     def get(self, request):
+        from django.core.paginator import Paginator
         only_pending = request.GET.get('statut', 'pending') == 'pending'
-        anomalies = get_anomalies_for_user(request.user, only_pending=only_pending)
+        anomalies_qs = get_anomalies_for_user(request.user, only_pending=only_pending)
+        paginator = Paginator(anomalies_qs, 30)
+        page_obj = paginator.get_page(request.GET.get('page'))
         return render(request, self.template_name, {
-            'anomalies': anomalies,
+            'anomalies': page_obj.object_list,
+            'anomalies_count': paginator.count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
             'only_pending': only_pending,
             'scope_label': 'ma direction' if request.user.is_directeur and not request.user.has_global_access else 'toutes les directions',
         })
@@ -187,10 +203,17 @@ class AnomalyListView(GlobalAccessRequiredMixin, View):
     template_name = 'reporting/anomaly_list.html'
 
     def get(self, request):
+        from django.core.paginator import Paginator
         only_pending = request.GET.get('statut', 'pending') == 'pending'
-        anomalies = get_anomalies_for_user(request.user, only_pending=only_pending)
+        anomalies_qs = get_anomalies_for_user(request.user, only_pending=only_pending)
+        paginator = Paginator(anomalies_qs, 30)
+        page_obj = paginator.get_page(request.GET.get('page'))
         return render(request, self.template_name, {
-            'anomalies': anomalies,
+            'anomalies': page_obj.object_list,
+            'anomalies_count': paginator.count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
             'only_pending': only_pending,
             'scope_label': 'toutes les directions',
         })
@@ -256,10 +279,19 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
         order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
         rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
 
+        # Pagination manuelle (50 par page)
+        from django.core.paginator import Paginator
+        paginator = Paginator(rows, 50)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
         from apps.organization.models import Agence, Direction, Mutuelle
         return render(request, self.template_name, {
             'target_date': target_date,
-            'rows': rows,
+            'rows': page_obj.object_list,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
             'present_count': present_count,
             'absent_count': absent_count,
             'total_count': len(rows),
@@ -476,6 +508,12 @@ class MonthlyHoursView(GlobalAccessRequiredMixin, View):
             })
 
         rows.sort(key=lambda r: r['minutes'], reverse=True)
+        rows_count = len(rows)
+
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(rows, 50)
+        page_obj = paginator.get_page(request.GET.get('page'))
 
         h_all, m_all = divmod(total_minutes_all, 60)
         from apps.organization.models import Direction, Mutuelle
@@ -484,7 +522,11 @@ class MonthlyHoursView(GlobalAccessRequiredMixin, View):
             'month': month,
             'start': start,
             'end': end,
-            'rows': rows,
+            'rows': page_obj.object_list,
+            'rows_count': rows_count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
             'total_hours_all': f'{h_all}h{m_all:02d}',
             'mutuelles': Mutuelle.objects.filter(is_active=True),
             'directions': Direction.objects.filter(is_active=True),
