@@ -240,7 +240,7 @@ body {
 }
 .pointage-slot.done { border-left-color: var(--acep-green); background: var(--acep-green-light); }
 .pointage-slot .slot-label,
-.pointage-slot .label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; display: block; }
+.pointage-slot .label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; display: block; white-space: nowrap; }
 .pointage-slot .slot-time,
 .pointage-slot .time { font-size: 1.1rem; font-weight: 700; color: var(--acep-green-dark); display: block; }
 
