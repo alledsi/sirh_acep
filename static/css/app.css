@@ -136,6 +136,8 @@ body {
   padding: 12px 20px; border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px;
   flex-wrap: wrap; gap: 10px;
+  /* Reste visible en haut quand on scrolle */
+  position: sticky; top: 0; z-index: 20;
 }
 
 .role-badges .badge { font-size: 0.7rem; margin-right: 4px; padding: 5px 9px; }
