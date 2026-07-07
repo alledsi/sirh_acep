@@ -1,64 +1,121 @@
 {% extends 'base.html' %}
 
 {% block title %}Suivi quotidien{% endblock %}
-{% block page_title %}Suivi quotidien des pointages{% endblock %}
+{% block page_title %}Suivi des pointages{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-md-4">
     <div class="stat-card">
       <div class="icon" style="background: var(--acep-green-light); color: var(--acep-green);"><i class="bi bi-check-circle"></i></div>
-      <p class="label">Présents (pointés)</p>
+      <p class="label">{% if period == 'jour' %}Présents{% else %}Ont pointé{% endif %}</p>
       <p class="value">{{ present_count }}</p>
     </div>
   </div>
   <div class="col-md-4">
     <div class="stat-card">
       <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-x-circle"></i></div>
-      <p class="label">Absents</p>
+      <p class="label">{% if period == 'jour' %}Absents{% else %}Sans pointage{% endif %}</p>
       <p class="value">{{ absent_count }}</p>
     </div>
   </div>
   <div class="col-md-4">
     <div class="stat-card">
       <div class="icon" style="background: #cfe2ff; color: #084298;"><i class="bi bi-people"></i></div>
-      <p class="label">Effectif total</p>
+      <p class="label">Effectif filtré</p>
       <p class="value">{{ total_count }}</p>
+      {% if period != 'jour' %}<p class="trend text-muted">Cumul heures : <strong>{{ total_hours_all }}</strong></p>{% endif %}
     </div>
   </div>
 </div>
 
 <div class="card-section">
   <form method="get" class="row g-2 mb-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label small">Date</label>
-      <input type="date" name="date" value="{{ target_date|date:'Y-m-d' }}" class="form-control form-control-sm">
+    <div class="col-md-2">
+      <label class="form-label small">Période</label>
+      <select name="period" class="form-select form-select-sm" onchange="document.getElementById('period-inputs').setAttribute('data-active', this.value); this.form.submit();">
+        {% for code, label in period_choices %}
+          <option value="{{ code }}" {% if period == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
     </div>
-    <div class="col-md-3">
+
+    <div id="period-inputs" data-active="{{ period }}" class="col-md-4 d-flex gap-2">
+      {% if period == 'jour' %}
+        <div class="flex-fill">
+          <label class="form-label small">Date</label>
+          <input type="date" name="date" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm">
+        </div>
+      {% elif period == 'mois' %}
+        <div class="flex-fill">
+          <label class="form-label small">Mois</label>
+          <select name="month" class="form-select form-select-sm">
+            {% for num, label in months %}<option value="{{ num }}" {% if num == month %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="flex-fill">
+          <label class="form-label small">Année</label>
+          <select name="year" class="form-select form-select-sm">
+            {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          </select>
+        </div>
+      {% elif period == 'annee' %}
+        <div class="flex-fill">
+          <label class="form-label small">Année</label>
+          <select name="year" class="form-select form-select-sm">
+            {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+          </select>
+        </div>
+      {% elif period == 'periode' %}
+        <div class="flex-fill">
+          <label class="form-label small">Du</label>
+          <input type="date" name="start_date" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm">
+        </div>
+        <div class="flex-fill">
+          <label class="form-label small">Au</label>
+          <input type="date" name="end_date" value="{{ end|date:'Y-m-d' }}" class="form-control form-control-sm">
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="col-md-2">
       <label class="form-label small">Mutuelle</label>
       <select name="mutuelle" class="form-select form-select-sm">
         <option value="">Toutes</option>
         {% for m in mutuelles %}<option value="{{ m.pk }}" {% if filters.mutuelle == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+
+    <div class="col-md-2">
+      <label class="form-label small">Agence</label>
+      <select name="agence" class="form-select form-select-sm">
+        <option value="">Toutes</option>
+        {% for a in agences %}<option value="{{ a.pk }}" {% if filters.agence == a.pk|stringformat:'s' %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
       <label class="form-label small">Direction</label>
       <select name="direction" class="form-select form-select-sm">
         <option value="">Toutes</option>
         {% for d in directions %}<option value="{{ d.pk }}" {% if filters.direction == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+
+    <div class="col-md-12 d-flex gap-2 mt-2">
       <button class="btn-acep" style="width:auto; padding:6px 14px;"><i class="bi bi-funnel"></i> Filtrer</button>
-      <a href="{% url 'reporting:export_stats' %}?type=daily&date={{ target_date|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+      <a href="{% url 'reporting:export_stats' %}?type=daily_full&period={{ period }}&date={{ start|date:'Y-m-d' }}&start_date={{ start|date:'Y-m-d' }}&end_date={{ end|date:'Y-m-d' }}&year={{ year }}&month={{ month }}&mutuelle={{ filters.mutuelle }}&agence={{ filters.agence }}&direction={{ filters.direction }}" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-excel"></i> Export Excel (présents + absents)
+      </a>
     </div>
   </form>
 
-  <h5 class="mb-3"><i class="bi bi-calendar3"></i> {{ target_date|date:'l d F Y' }}</h5>
+  <h5 class="mb-3"><i class="bi bi-calendar3"></i> {{ period_label }}</h5>
 
   <div class="table-responsive">
     <table class="table modern-table align-middle">
       <thead>
+        {% if period == 'jour' %}
         <tr>
           <th>Matricule</th>
           <th>Nom</th>
@@ -66,11 +123,27 @@
           <th>Direction</th>
           <th>Arrivée</th>
           <th>Départ</th>
+          <th>IP arrivée</th>
+          <th>IP départ</th>
           <th>Statut</th>
         </tr>
+        {% else %}
+        <tr>
+          <th>Matricule</th>
+          <th>Nom</th>
+          <th>Bureau</th>
+          <th>Direction</th>
+          <th>Jours pointés</th>
+          <th>Jours absents</th>
+          <th>Total heures</th>
+          <th>IPs arrivée</th>
+          <th>IPs départ</th>
+        </tr>
+        {% endif %}
       </thead>
       <tbody>
         {% for row in rows %}
+          {% if period == 'jour' %}
           <tr {% if row.status == 'absent' %}style="background:#fff5f5;"{% endif %}>
             <td><code>{{ row.employee.user.matricule }}</code></td>
             <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
@@ -78,6 +151,8 @@
             <td>{{ row.employee.direction.name }}</td>
             <td>{% if row.entry.arrival_time %}{{ row.entry.arrival_time|time:'H:i' }}{% else %}—{% endif %}</td>
             <td>{% if row.entry.departure_time %}{{ row.entry.departure_time|time:'H:i' }}{% else %}—{% endif %}</td>
+            <td>{% if row.entry.arrival_ip %}<code class="small">{{ row.entry.arrival_ip }}</code>{% else %}—{% endif %}</td>
+            <td>{% if row.entry.departure_ip %}<code class="small">{{ row.entry.departure_ip }}</code>{% else %}—{% endif %}</td>
             <td>
               {% if row.status == 'present' %}<span class="badge bg-success">Présent</span>
               {% elif row.status == 'on_break' %}<span class="badge bg-info">En pause</span>
@@ -85,6 +160,23 @@
               {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
             </td>
           </tr>
+          {% else %}
+          <tr {% if row.days_present == 0 %}style="background:#fff5f5;"{% endif %}>
+            <td><code>{{ row.employee.user.matricule }}</code></td>
+            <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
+            <td>{{ row.employee.bureau.name }}</td>
+            <td>{{ row.employee.direction.name }}</td>
+            <td>{{ row.days_present }}</td>
+            <td>{% if row.days_absent > 0 %}<span class="badge bg-warning text-dark">{{ row.days_absent }}</span>{% else %}0{% endif %}</td>
+            <td><strong>{{ row.hours }}</strong></td>
+            <td>
+              {% for ip in row.arrival_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
+            </td>
+            <td>
+              {% for ip in row.departure_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
+            </td>
+          </tr>
+          {% endif %}
         {% endfor %}
       </tbody>
     </table>

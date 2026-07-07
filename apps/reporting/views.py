@@ -222,25 +222,68 @@ class AnomalyListView(GlobalAccessRequiredMixin, View):
 # ============ Suivi quotidien (RH/DG) ============
 
 class DailyTrackingView(GlobalAccessRequiredMixin, View):
-    """Liste des employés ayant pointé un jour donné (défaut : aujourd'hui)."""
+    """Suivi des pointages : jour / mois / année / période libre.
+
+    - jour  : liste détaillée (arrivée, départ, IPs, statut)
+    - mois / annee / periode : agrégé par employé (jours présents, absents,
+      total heures, IPs distinctes utilisées)
+    """
     template_name = 'reporting/daily_tracking.html'
 
+    PERIOD_CHOICES = [
+        ('jour', 'Jour'),
+        ('mois', 'Mois'),
+        ('annee', 'Année'),
+        ('periode', 'Période libre'),
+    ]
+
+    def _resolve_period(self, request):
+        """Retourne (period_type, start, end, label)."""
+        from datetime import datetime, date as _date
+        period = request.GET.get('period', 'jour')
+        today = timezone.localdate()
+
+        if period == 'mois':
+            year = int(request.GET.get('year') or today.year)
+            month = int(request.GET.get('month') or today.month)
+            start = _date(year, month, 1)
+            end = (_date(year + 1, 1, 1) - timedelta(days=1)
+                   if month == 12 else _date(year, month + 1, 1) - timedelta(days=1))
+            label = f'{start:%B %Y}'
+        elif period == 'annee':
+            year = int(request.GET.get('year') or today.year)
+            start, end = _date(year, 1, 1), _date(year, 12, 31)
+            label = f'Année {year}'
+        elif period == 'periode':
+            try:
+                start = datetime.strptime(request.GET.get('start_date', ''), '%Y-%m-%d').date()
+            except ValueError:
+                start = today - timedelta(days=7)
+            try:
+                end = datetime.strptime(request.GET.get('end_date', ''), '%Y-%m-%d').date()
+            except ValueError:
+                end = today
+            if end < start:
+                start, end = end, start
+            label = f'Du {start:%d/%m/%Y} au {end:%d/%m/%Y}'
+        else:  # jour
+            try:
+                start = datetime.strptime(request.GET.get('date', ''), '%Y-%m-%d').date()
+            except ValueError:
+                start = today
+            end = start
+            period = 'jour'
+            label = f'{start:%A %d %B %Y}'
+        return period, start, end, label
+
     def get(self, request):
-        from datetime import datetime
+        from datetime import date as _date, datetime
         from apps.attendance.models import TimeEntry
         from apps.employees.models import Employee
+        from apps.organization.models import Agence, Direction, Mutuelle
 
-        # Date sélectionnée
-        date_str = request.GET.get('date', '')
-        if date_str:
-            try:
-                target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except ValueError:
-                target_date = timezone.localdate()
-        else:
-            target_date = timezone.localdate()
+        period, start, end, label = self._resolve_period(request)
 
-        # Filtres
         mutuelle_id = request.GET.get('mutuelle', '')
         agence_id = request.GET.get('agence', '')
         direction_id = request.GET.get('direction', '')
@@ -255,39 +298,88 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
         if direction_id:
             employees = employees.filter(direction_id=direction_id)
 
-        entries = TimeEntry.objects.filter(
-            work_date=target_date,
+        entries_qs = TimeEntry.objects.filter(
+            work_date__gte=start, work_date__lte=end,
             employee__in=employees,
-        ).select_related('employee__user', 'arrival_bureau').prefetch_related('anomalies')
-
-        entries_by_emp = {e.employee_id: e for e in entries}
+        ).select_related('employee__user', 'arrival_bureau', 'departure_bureau')
 
         rows = []
         present_count = 0
         absent_count = 0
-        for emp in employees:
-            entry = entries_by_emp.get(emp.pk)
-            if entry and entry.arrival_time:
-                status = 'departed' if entry.departure_time else ('on_break' if entry.is_on_break else 'present')
-                present_count += 1
-            else:
-                status = 'absent'
-                absent_count += 1
-            rows.append({'employee': emp, 'entry': entry, 'status': status})
+        total_minutes_all = 0
 
-        # Tri : présents en haut
-        order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
-        rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
+        if period == 'jour':
+            # Mode jour : ligne par employé, statut + IPs de la journée
+            entries_by_emp = {e.employee_id: e for e in entries_qs}
+            for emp in employees:
+                entry = entries_by_emp.get(emp.pk)
+                if entry and entry.arrival_time:
+                    status = 'departed' if entry.departure_time else ('on_break' if entry.is_on_break else 'present')
+                    present_count += 1
+                else:
+                    status = 'absent'
+                    absent_count += 1
+                rows.append({'employee': emp, 'entry': entry, 'status': status})
+            order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
+            rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
+        else:
+            # Mode agrégé : compte les jours présents/absents sur la période
+            entries_by_emp_map = {}
+            for e in entries_qs:
+                entries_by_emp_map.setdefault(e.employee_id, []).append(e)
 
-        # Pagination manuelle (50 par page)
+            # Calcul du nombre de jours ouvrés dans la période (Lun-Sam par défaut)
+            total_workable_days = sum(
+                1 for i in range((end - start).days + 1)
+                if (start + timedelta(days=i)).weekday() < 6  # exclut dimanche
+            )
+
+            for emp in employees:
+                emp_entries = entries_by_emp_map.get(emp.pk, [])
+                days_present = sum(1 for e in emp_entries if e.arrival_time)
+                total = timedelta()
+                arrival_ips = set()
+                departure_ips = set()
+                for e in emp_entries:
+                    if e.arrival_ip:
+                        arrival_ips.add(e.arrival_ip)
+                    if e.departure_ip:
+                        departure_ips.add(e.departure_ip)
+                    d = e.worked_duration
+                    if d:
+                        total += d
+                minutes = int(total.total_seconds() // 60)
+                total_minutes_all += minutes
+                h, m = divmod(minutes, 60)
+                days_absent = max(0, total_workable_days - days_present)
+                if days_present:
+                    present_count += 1
+                else:
+                    absent_count += 1
+                rows.append({
+                    'employee': emp,
+                    'days_present': days_present,
+                    'days_absent': days_absent,
+                    'hours': f'{h}h{m:02d}',
+                    'minutes': minutes,
+                    'arrival_ips': sorted(arrival_ips),
+                    'departure_ips': sorted(departure_ips),
+                })
+            rows.sort(key=lambda r: r['minutes'], reverse=True)
+
+        # Pagination
         from django.core.paginator import Paginator
         paginator = Paginator(rows, 50)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+        page_obj = paginator.get_page(request.GET.get('page'))
 
-        from apps.organization.models import Agence, Direction, Mutuelle
+        h_all, m_all = divmod(total_minutes_all, 60)
+
         return render(request, self.template_name, {
-            'target_date': target_date,
+            'period': period,
+            'start': start,
+            'end': end,
+            'period_label': label,
+            'target_date': start,  # rétro-compat avec le template
             'rows': page_obj.object_list,
             'page_obj': page_obj,
             'paginator': paginator,
@@ -295,12 +387,22 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
             'present_count': present_count,
             'absent_count': absent_count,
             'total_count': len(rows),
+            'total_hours_all': f'{h_all}h{m_all:02d}',
             'mutuelles': Mutuelle.objects.filter(is_active=True),
             'agences': Agence.objects.filter(is_active=True).select_related('mutuelle'),
             'directions': Direction.objects.filter(is_active=True),
             'filters': {
                 'mutuelle': mutuelle_id, 'agence': agence_id, 'direction': direction_id,
             },
+            'year': start.year,
+            'month': start.month,
+            'years': list(range(timezone.localdate().year - 3, timezone.localdate().year + 1)),
+            'months': [
+                (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+                (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+                (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre'),
+            ],
+            'period_choices': self.PERIOD_CHOICES,
         })
 
 
@@ -314,6 +416,169 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
           ?type=monthly&year=YYYY&month=MM
           ?type=yearly&year=YYYY
     """
+
+    def _export_daily_full(self, request, start, end, label, period):
+        """Export Excel : présents + absents + IPs sur la période choisie.
+
+        En mode 'jour' : 1 ligne par employé (pointage détaillé).
+        En mode agrégé (mois/année/période) : cumul par employé.
+        """
+        import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from django.http import HttpResponse
+        from apps.attendance.models import TimeEntry
+        from apps.employees.models import Employee
+
+        # Filtres appliqués (repris de l'écran Suivi)
+        mutuelle_id = request.GET.get('mutuelle', '')
+        agence_id = request.GET.get('agence', '')
+        direction_id = request.GET.get('direction', '')
+        employees = Employee.objects.filter(is_active=True).select_related(
+            'user', 'bureau__agence__mutuelle', 'direction',
+        )
+        if mutuelle_id:
+            employees = employees.filter(bureau__agence__mutuelle_id=mutuelle_id)
+        if agence_id:
+            employees = employees.filter(bureau__agence_id=agence_id)
+        if direction_id:
+            employees = employees.filter(direction_id=direction_id)
+
+        entries_qs = TimeEntry.objects.filter(
+            work_date__gte=start, work_date__lte=end, employee__in=employees,
+        ).select_related('arrival_bureau', 'departure_bureau')
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Suivi'
+
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='02564A', end_color='02564A', fill_type='solid')
+        title_font = Font(bold=True, size=14, color='02564A')
+        red_fill = PatternFill(start_color='FDECEC', end_color='FDECEC', fill_type='solid')
+
+        ws['A1'] = f'ACEP — {label} ({employees.count()} agent(s) filtré(s))'
+        ws['A1'].font = title_font
+
+        if period == 'jour':
+            headers = ['Matricule', 'Nom complet', 'Direction', 'Bureau',
+                       'Arrivée', 'IP arrivée',
+                       'Départ', 'IP départ',
+                       'Heures travaillées', 'Statut']
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+            for col, h in enumerate(headers, 1):
+                c = ws.cell(row=3, column=col, value=h)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = Alignment(horizontal='center')
+
+            entries_by_emp = {e.employee_id: e for e in entries_qs}
+            row_num = 4
+            for emp in employees:
+                entry = entries_by_emp.get(emp.pk)
+                is_absent = not (entry and entry.arrival_time)
+                if entry and entry.worked_duration:
+                    total_min = int(entry.worked_duration.total_seconds() // 60)
+                    h, m = divmod(total_min, 60)
+                    hours_str = f'{h}h{m:02d}'
+                else:
+                    hours_str = ''
+                if is_absent:
+                    status = 'ABSENT'
+                elif entry.departure_time:
+                    status = 'Parti'
+                elif entry.is_on_break:
+                    status = 'En pause'
+                else:
+                    status = 'Présent'
+
+                values = [
+                    emp.user.matricule,
+                    emp.user.get_full_name() or emp.user.matricule,
+                    emp.direction.name if emp.direction else '',
+                    emp.bureau.name if emp.bureau else '',
+                    entry.arrival_time.strftime('%H:%M') if entry and entry.arrival_time else '',
+                    entry.arrival_ip if entry and entry.arrival_ip else '',
+                    entry.departure_time.strftime('%H:%M') if entry and entry.departure_time else '',
+                    entry.departure_ip if entry and entry.departure_ip else '',
+                    hours_str,
+                    status,
+                ]
+                for col, v in enumerate(values, 1):
+                    c = ws.cell(row=row_num, column=col, value=v)
+                    if is_absent:
+                        c.fill = red_fill
+                row_num += 1
+
+            widths = [12, 30, 32, 25, 10, 16, 10, 16, 16, 12]
+        else:
+            headers = ['Matricule', 'Nom complet', 'Direction', 'Bureau',
+                       'Jours pointés', 'Jours absents',
+                       'Total heures', 'IPs arrivée (distinctes)', 'IPs départ (distinctes)']
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+            for col, h in enumerate(headers, 1):
+                c = ws.cell(row=3, column=col, value=h)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = Alignment(horizontal='center')
+
+            entries_map = {}
+            for e in entries_qs:
+                entries_map.setdefault(e.employee_id, []).append(e)
+
+            # Nb jours travaillables sur la période (exclut dimanches)
+            total_workable = sum(
+                1 for i in range((end - start).days + 1)
+                if (start + timedelta(days=i)).weekday() < 6
+            )
+
+            row_num = 4
+            for emp in employees:
+                emp_entries = entries_map.get(emp.pk, [])
+                days_present = sum(1 for e in emp_entries if e.arrival_time)
+                days_absent = max(0, total_workable - days_present)
+                total = timedelta()
+                arrival_ips = set()
+                departure_ips = set()
+                for e in emp_entries:
+                    if e.arrival_ip:
+                        arrival_ips.add(e.arrival_ip)
+                    if e.departure_ip:
+                        departure_ips.add(e.departure_ip)
+                    d = e.worked_duration
+                    if d:
+                        total += d
+                total_min = int(total.total_seconds() // 60)
+                h, m = divmod(total_min, 60)
+                is_absent_all = days_present == 0
+
+                values = [
+                    emp.user.matricule,
+                    emp.user.get_full_name() or emp.user.matricule,
+                    emp.direction.name if emp.direction else '',
+                    emp.bureau.name if emp.bureau else '',
+                    days_present,
+                    days_absent,
+                    f'{h}h{m:02d}',
+                    ', '.join(sorted(arrival_ips)),
+                    ', '.join(sorted(departure_ips)),
+                ]
+                for col, v in enumerate(values, 1):
+                    c = ws.cell(row=row_num, column=col, value=v)
+                    if is_absent_all:
+                        c.fill = red_fill
+                row_num += 1
+            widths = [12, 30, 32, 25, 14, 14, 14, 30, 30]
+
+        for col, w in enumerate(widths, 1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        filename = f'suivi_acep_{period}_{start:%Y%m%d}_{end:%Y%m%d}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        wb.save(response)
+        return response
 
     def get(self, request):
         from datetime import datetime, date as _date
@@ -331,6 +596,41 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
             d_str = request.GET.get('date', today.isoformat())
             d = datetime.strptime(d_str, '%Y-%m-%d').date()
             start, end, label = d, d, f'Pointages du {d:%d/%m/%Y}'
+        elif export_type == 'daily_full':
+            # Suivi complet — présents + absents + IPs. Prend les mêmes params
+            # que la page Suivi quotidien (period=jour/mois/annee/periode).
+            period = request.GET.get('period', 'jour')
+            if period == 'mois':
+                year = int(request.GET.get('year') or today.year)
+                month = int(request.GET.get('month') or today.month)
+                start = _date(year, month, 1)
+                end = (_date(year + 1, 1, 1) - timedelta(days=1)
+                       if month == 12 else _date(year, month + 1, 1) - timedelta(days=1))
+                label = f'Suivi — {start:%B %Y}'
+            elif period == 'annee':
+                year = int(request.GET.get('year') or today.year)
+                start, end = _date(year, 1, 1), _date(year, 12, 31)
+                label = f'Suivi — Année {year}'
+            elif period == 'periode':
+                try:
+                    start = datetime.strptime(request.GET.get('start_date', ''), '%Y-%m-%d').date()
+                except ValueError:
+                    start = today - timedelta(days=7)
+                try:
+                    end = datetime.strptime(request.GET.get('end_date', ''), '%Y-%m-%d').date()
+                except ValueError:
+                    end = today
+                if end < start:
+                    start, end = end, start
+                label = f'Suivi du {start:%d/%m/%Y} au {end:%d/%m/%Y}'
+            else:
+                try:
+                    start = datetime.strptime(request.GET.get('date', ''), '%Y-%m-%d').date()
+                except ValueError:
+                    start = today
+                end = start
+                label = f'Suivi du {start:%d/%m/%Y}'
+            return self._export_daily_full(request, start, end, label, period)
         elif export_type == 'weekly':
             d_str = request.GET.get('date', today.isoformat())
             d = datetime.strptime(d_str, '%Y-%m-%d').date()
