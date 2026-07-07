@@ -17,7 +17,6 @@
           <strong>Connexion détectée :</strong>
           {% if today_entry.arrival_bureau %}
             {{ today_entry.arrival_bureau.name }}
-            {% if today_entry.arrival_ip %}<small class="text-muted">(IP {{ today_entry.arrival_ip }})</small>{% endif %}
           {% else %}
             <em class="text-muted">en attente du 1er pointage</em>
           {% endif %}

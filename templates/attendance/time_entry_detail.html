@@ -16,7 +16,7 @@
           <td>
             {% if entry.arrival_time %}{{ entry.arrival_time|time:'H:i' }}
               — {% if entry.arrival_bureau %}{{ entry.arrival_bureau.name }}{% else %}<em>Bureau inconnu</em>{% endif %}
-              {% if entry.arrival_ip %}(<code>{{ entry.arrival_ip }}</code>){% endif %}
+              {% if entry.arrival_ip and user_has_global_access %}<small class="text-muted">(<code>{{ entry.arrival_ip }}</code>)</small>{% endif %}
             {% else %}—{% endif %}
           </td>
         </tr>
@@ -26,7 +26,7 @@
           <td>
             {% if entry.departure_time %}{{ entry.departure_time|time:'H:i' }}
               — {% if entry.departure_bureau %}{{ entry.departure_bureau.name }}{% else %}<em>Bureau inconnu</em>{% endif %}
-              {% if entry.departure_ip %}(<code>{{ entry.departure_ip }}</code>){% endif %}
+              {% if entry.departure_ip and user_has_global_access %}<small class="text-muted">(<code>{{ entry.departure_ip }}</code>)</small>{% endif %}
             {% else %}—{% endif %}
           </td>
         </tr>

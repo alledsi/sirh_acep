@@ -86,10 +86,9 @@
             <div class="connexion-line">
               {% if today_entry.arrival_bureau %}
                 <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.arrival_bureau.name }}</strong>
-                {% if today_entry.arrival_ip %}<span class="ip ms-2">{{ today_entry.arrival_ip }}</span>{% endif %}
                 {% if today_entry.bureau_coherent %}<span class="coherence-tag ok ms-1">✓ Cohérent</span>
                 {% else %}<span class="coherence-tag warn ms-1">⚠ Incohérent</span>{% endif %}
-              {% elif today_entry.arrival_ip %}<i class="bi bi-exclamation-triangle"></i> IP <code>{{ today_entry.arrival_ip }}</code> non rattachée
+              {% elif today_entry.arrival_ip %}<i class="bi bi-exclamation-triangle"></i> Bureau non identifié
               {% else %}<i class="bi bi-hourglass-split"></i> Pas encore pointé{% endif %}
             </div>
           </div>
@@ -108,7 +107,6 @@
             <div class="connexion-line">
               {% if today_entry.departure_bureau %}
                 <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.departure_bureau.name }}</strong>
-                {% if today_entry.departure_ip %}<span class="ip ms-2">{{ today_entry.departure_ip }}</span>{% endif %}
               {% else %}<i class="bi bi-hourglass-split"></i> Pas encore pointé{% endif %}
             </div>
           </div>
@@ -212,7 +210,6 @@
         <i class="bi bi-shield-check" style="color: var(--acep-green);"></i>
         {% if today_entry.arrival_bureau %}
           Vous êtes connecté depuis <strong>{{ today_entry.arrival_bureau.name }}</strong>
-          (IP {{ today_entry.arrival_ip }})
         {% else %}
           Affectation : <strong>{{ employee.bureau.name }}</strong>
         {% endif %}

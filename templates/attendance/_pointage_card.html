@@ -45,14 +45,13 @@ Variables attendues dans le contexte :
         <div class="connexion-line">
           {% if today_entry.arrival_bureau %}
             <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.arrival_bureau.name }}</strong>
-            {% if today_entry.arrival_ip %}<span class="ip ms-2">{{ today_entry.arrival_ip }}</span>{% endif %}
             {% if today_entry.bureau_coherent %}
               <span class="coherence-tag ok ms-1">✓ Cohérent</span>
             {% else %}
               <span class="coherence-tag warn ms-1">⚠ Incohérent</span>
             {% endif %}
           {% elif today_entry.arrival_ip %}
-            <i class="bi bi-exclamation-triangle"></i> IP <code>{{ today_entry.arrival_ip }}</code> non rattachée
+            <i class="bi bi-exclamation-triangle"></i> Bureau non identifié
           {% else %}
             <i class="bi bi-hourglass-split"></i> Pas encore pointé
           {% endif %}
@@ -100,7 +99,6 @@ Variables attendues dans le contexte :
         {% if today_entry.departure_bureau %}
           <div class="connexion-line">
             <i class="bi bi-geo-alt"></i> {{ today_entry.departure_bureau.name }}
-            {% if today_entry.departure_ip %}<span class="ip ms-2">{{ today_entry.departure_ip }}</span>{% endif %}
           </div>
         {% endif %}
       </div>
