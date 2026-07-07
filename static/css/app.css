@@ -239,8 +239,10 @@ body {
   border-left: 3px solid #dee2e6;
 }
 .pointage-slot.done { border-left-color: var(--acep-green); background: var(--acep-green-light); }
-.pointage-slot .slot-label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; }
-.pointage-slot .slot-time { font-size: 1.1rem; font-weight: 700; color: var(--acep-green-dark); }
+.pointage-slot .slot-label,
+.pointage-slot .label { font-size: 0.78rem; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; display: block; }
+.pointage-slot .slot-time,
+.pointage-slot .time { font-size: 1.1rem; font-weight: 700; color: var(--acep-green-dark); display: block; }
 
 .hierarchy-chip {
   display: inline-flex; align-items: center; gap: 5px;
