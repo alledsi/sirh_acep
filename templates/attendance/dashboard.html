@@ -121,7 +121,7 @@
                 <span class="label">Début pause</span>
                 <span class="time">{% if today_entry.break_start %}{{ today_entry.break_start|time:'H:i' }}{% else %}--:--{% endif %}</span>
               </div>
-              {% if today_entry.break_start %}<span class="badge bg-info">OK</span>
+              {% if today_entry.break_start %}<span class="badge bg-success">Pointée</span>
               {% else %}<span class="badge bg-secondary">—</span>{% endif %}
             </div>
             {% if today_entry.break_start_bureau %}
@@ -137,9 +137,17 @@
                 <span class="label">Fin pause</span>
                 <span class="time">{% if today_entry.break_end %}{{ today_entry.break_end|time:'H:i' }}{% else %}--:--{% endif %}</span>
               </div>
-              {% if today_entry.break_duration %}<span class="badge bg-info">{{ today_entry.break_duration|hm }}</span>
+              {% if today_entry.break_end %}<span class="badge bg-success">Pointée</span>
               {% else %}<span class="badge bg-secondary">—</span>{% endif %}
             </div>
+            {% if today_entry.break_end_bureau %}
+              <div class="connexion-line">
+                <i class="bi bi-geo-alt"></i> {{ today_entry.break_end_bureau.name }}
+                {% if today_entry.break_duration %}
+                  <span class="badge bg-info ms-2">Durée : {{ today_entry.break_duration|hm }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
           </div>
         </div>
       </div>
