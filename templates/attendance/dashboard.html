@@ -107,6 +107,8 @@
             <div class="connexion-line">
               {% if today_entry.departure_bureau %}
                 <i class="bi bi-geo-alt"></i> <strong>{{ today_entry.departure_bureau.name }}</strong>
+                {% if today_entry.departure_bureau_coherent %}<span class="coherence-tag ok ms-1">✓ Cohérent</span>
+                {% else %}<span class="coherence-tag warn ms-1">⚠ Incohérent</span>{% endif %}
               {% else %}<i class="bi bi-hourglass-split"></i> Pas encore pointé{% endif %}
             </div>
           </div>

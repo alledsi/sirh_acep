@@ -127,6 +127,13 @@ class TimeEntry(BaseModel):
         return self.arrival_bureau_id == self.employee.bureau_id
 
     @property
+    def departure_bureau_coherent(self) -> bool | None:
+        """True si le bureau de connexion au départ == bureau d'affectation."""
+        if not self.departure_bureau:
+            return None
+        return self.departure_bureau_id == self.employee.bureau_id
+
+    @property
     def is_in_progress(self) -> bool:
         """L'employé est arrivé mais pas encore parti."""
         return self.arrival_time is not None and self.departure_time is None

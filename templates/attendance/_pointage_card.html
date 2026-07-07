@@ -99,6 +99,11 @@ Variables attendues dans le contexte :
         {% if today_entry.departure_bureau %}
           <div class="connexion-line">
             <i class="bi bi-geo-alt"></i> {{ today_entry.departure_bureau.name }}
+            {% if today_entry.departure_bureau_coherent %}
+              <span class="coherence-tag ok ms-1">✓ Cohérent</span>
+            {% else %}
+              <span class="coherence-tag warn ms-1">⚠ Incohérent</span>
+            {% endif %}
           </div>
         {% endif %}
       </div>
