@@ -19,10 +19,14 @@
       <table class="table modern-table align-middle">
         <thead>
           <tr>
-            <th>Jour</th><th>Arrivée</th>
-            <th>Bureau de connexion</th>
-            <th>Pause</th><th>Départ</th>
-            <th>Total</th><th>Cohérence</th><th>Statut</th>
+            <th>Jour</th>
+            <th>Arrivée</th>
+            <th>Bureau (arrivée)</th>
+            <th>Pause</th>
+            <th>Départ</th>
+            <th>Bureau (départ)</th>
+            <th>Total</th>
+            <th>Statut</th>
           </tr>
         </thead>
         <tbody>
@@ -33,6 +37,8 @@
               <td>
                 {% if e.arrival_bureau %}
                   <strong>{{ e.arrival_bureau.name }}</strong>
+                  {% if e.bureau_coherent %}<span class="coherence-tag ok ms-1">✓</span>
+                  {% else %}<span class="coherence-tag warn ms-1">⚠</span>{% endif %}
                 {% elif e.arrival_ip %}
                   <em class="text-danger small">Bureau non identifié</em>
                 {% else %}—{% endif %}
@@ -43,12 +49,14 @@
                 {% if not e.break_start %}—{% endif %}
               </td>
               <td>{% if e.departure_time %}{{ e.departure_time|time:'H:i' }}{% elif e.arrival_time %}<em class="text-muted">en cours</em>{% else %}—{% endif %}</td>
-              <td>{% if e.worked_duration %}{{ e.worked_duration|hm }}{% else %}—{% endif %}</td>
               <td>
-                {% if e.bureau_coherent is None %}—
-                {% elif e.bureau_coherent %}<span class="coherence-tag ok">✓</span>
-                {% else %}<span class="coherence-tag warn">⚠</span>{% endif %}
+                {% if e.departure_bureau %}
+                  <strong>{{ e.departure_bureau.name }}</strong>
+                  {% if e.departure_bureau_coherent %}<span class="coherence-tag ok ms-1">✓</span>
+                  {% else %}<span class="coherence-tag warn ms-1">⚠</span>{% endif %}
+                {% else %}—{% endif %}
               </td>
+              <td>{% if e.worked_duration %}{{ e.worked_duration|hm }}{% else %}—{% endif %}</td>
               <td>
                 {% if e.anomalies.all %}
                   {% for ano in e.anomalies.all %}
@@ -65,8 +73,8 @@
             </tr>
           {% endfor %}
           <tr>
-            <td colspan="5" class="text-end"><strong>Total {{ periode }}</strong></td>
-            <td colspan="3"><strong>{{ total|hm }}</strong> ({{ days_count }} jour{{ days_count|pluralize }})</td>
+            <td colspan="6" class="text-end"><strong>Total {{ periode }}</strong></td>
+            <td colspan="2"><strong>{{ total|hm }}</strong> ({{ days_count }} jour{{ days_count|pluralize }})</td>
           </tr>
         </tbody>
       </table>
