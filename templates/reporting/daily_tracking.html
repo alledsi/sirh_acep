@@ -119,6 +119,7 @@
         <tr>
           <th>Matricule</th>
           <th>Nom</th>
+          <th>Fonction</th>
           <th>Bureau</th>
           <th>Direction</th>
           <th>Arrivée</th>
@@ -131,6 +132,7 @@
         <tr>
           <th>Matricule</th>
           <th>Nom</th>
+          <th>Fonction</th>
           <th>Bureau</th>
           <th>Direction</th>
           <th>Jours pointés</th>
@@ -147,6 +149,7 @@
           <tr {% if row.status == 'absent' %}style="background:#fff5f5;"{% endif %}>
             <td><code>{{ row.employee.user.matricule }}</code></td>
             <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
+            <td>{{ row.employee.position|default:'—' }}</td>
             <td>{{ row.employee.bureau.name }}</td>
             <td>{{ row.employee.direction.name }}</td>
             <td>{% if row.entry.arrival_time %}{{ row.entry.arrival_time|time:'H:i' }}{% else %}—{% endif %}</td>
@@ -164,6 +167,7 @@
           <tr {% if row.days_present == 0 %}style="background:#fff5f5;"{% endif %}>
             <td><code>{{ row.employee.user.matricule }}</code></td>
             <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
+            <td>{{ row.employee.position|default:'—' }}</td>
             <td>{{ row.employee.bureau.name }}</td>
             <td>{{ row.employee.direction.name }}</td>
             <td>{{ row.days_present }}</td>

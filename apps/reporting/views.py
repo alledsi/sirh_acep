@@ -460,7 +460,7 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
         ws['A1'].font = title_font
 
         if period == 'jour':
-            headers = ['Matricule', 'Nom complet', 'Direction', 'Bureau',
+            headers = ['Matricule', 'Nom complet', 'Fonction', 'Direction', 'Bureau',
                        'Arrivée', 'IP arrivée',
                        'Départ', 'IP départ',
                        'Heures travaillées', 'Statut']
@@ -494,6 +494,7 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
                 values = [
                     emp.user.matricule,
                     emp.user.get_full_name() or emp.user.matricule,
+                    emp.position or '',
                     emp.direction.name if emp.direction else '',
                     emp.bureau.name if emp.bureau else '',
                     entry.arrival_time.strftime('%H:%M') if entry and entry.arrival_time else '',
@@ -509,9 +510,9 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
                         c.fill = red_fill
                 row_num += 1
 
-            widths = [12, 30, 32, 25, 10, 16, 10, 16, 16, 12]
+            widths = [12, 30, 24, 32, 25, 10, 16, 10, 16, 16, 12]
         else:
-            headers = ['Matricule', 'Nom complet', 'Direction', 'Bureau',
+            headers = ['Matricule', 'Nom complet', 'Fonction', 'Direction', 'Bureau',
                        'Jours pointés', 'Jours absents',
                        'Total heures', 'IPs arrivée (distinctes)', 'IPs départ (distinctes)']
             ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
@@ -554,6 +555,7 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
                 values = [
                     emp.user.matricule,
                     emp.user.get_full_name() or emp.user.matricule,
+                    emp.position or '',
                     emp.direction.name if emp.direction else '',
                     emp.bureau.name if emp.bureau else '',
                     days_present,
@@ -567,7 +569,7 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
                     if is_absent_all:
                         c.fill = red_fill
                 row_num += 1
-            widths = [12, 30, 32, 25, 14, 14, 14, 30, 30]
+            widths = [12, 30, 24, 32, 25, 14, 14, 14, 30, 30]
 
         for col, w in enumerate(widths, 1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
