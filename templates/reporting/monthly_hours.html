@@ -48,6 +48,7 @@
         <tr>
           <th>Matricule</th>
           <th>Nom</th>
+          <th>Fonction</th>
           <th>Direction</th>
           <th>Bureau</th>
           <th>Jours travaillés</th>
@@ -59,6 +60,7 @@
           <tr>
             <td><code>{{ row.employee.user.matricule }}</code></td>
             <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
+            <td>{{ row.employee.position|default:'—' }}</td>
             <td>{{ row.employee.direction.name }}</td>
             <td>{{ row.employee.bureau.name }}</td>
             <td>{{ row.days }}</td>

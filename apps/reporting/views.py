@@ -709,10 +709,10 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
         ws2 = wb.create_sheet('Cumul par employé')
         ws2['A1'] = f'Cumul des heures — {label}'
         ws2['A1'].font = title_font
-        ws2.merge_cells('A1:E1')
+        ws2.merge_cells('A1:F1')
         ws2['A1'].alignment = Alignment(horizontal='center')
 
-        headers2 = ['Matricule', 'Nom complet', 'Direction', 'Jours travaillés', 'Total heures']
+        headers2 = ['Matricule', 'Nom complet', 'Fonction', 'Direction', 'Jours travaillés', 'Total heures']
         for col, h in enumerate(headers2, 1):
             cell = ws2.cell(row=3, column=col, value=h)
             cell.font = header_font
@@ -737,12 +737,13 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
             h, m = divmod(total_min, 60)
             ws2.cell(row=row_num, column=1, value=emp.user.matricule)
             ws2.cell(row=row_num, column=2, value=emp.user.get_full_name() or emp.user.matricule)
-            ws2.cell(row=row_num, column=3, value=emp.direction.name if emp.direction else '')
-            ws2.cell(row=row_num, column=4, value=days)
-            ws2.cell(row=row_num, column=5, value=f'{h}h{m:02d}')
+            ws2.cell(row=row_num, column=3, value=emp.position or '')
+            ws2.cell(row=row_num, column=4, value=emp.direction.name if emp.direction else '')
+            ws2.cell(row=row_num, column=5, value=days)
+            ws2.cell(row=row_num, column=6, value=f'{h}h{m:02d}')
             row_num += 1
 
-        for col, w in enumerate([12, 30, 25, 16, 14], 1):
+        for col, w in enumerate([12, 30, 24, 25, 16, 14], 1):
             ws2.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
 
         # Réponse HTTP
@@ -836,7 +837,6 @@ class MonthlyHoursView(GlobalAccessRequiredMixin, View):
             'years': list(range(timezone.localdate().year - 3, timezone.localdate().year + 1)),
             'months': [
                 (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
-                (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
                 (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre'),
             ],
         })
