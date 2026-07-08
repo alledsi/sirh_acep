@@ -128,7 +128,22 @@ body {
 .sidebar a i { width: 18px; }
 .sidebar a small { opacity: 0.5; font-size: 0.7rem; }
 
-.main { margin-left: 260px; padding: 20px 30px; }
+.main {
+  margin-left: 260px;
+  padding: 20px 30px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-footer {
+  margin-top: auto;
+  padding: 18px 20px 10px;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.85rem;
+  border-top: 1px solid #e5e7eb;
+}
 
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
