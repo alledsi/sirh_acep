@@ -7,7 +7,7 @@
 
 <div class="card-section">
   <div class="d-flex justify-content-between mb-3">
-    <h5><i class="bi bi-exclamation-triangle"></i> Anomalies ({{ anomalies_count|default:anomalies|length }})</h5>
+    <h5><i class="bi bi-exclamation-triangle"></i> Anomalies ({{ anomalies_count }})</h5>
     <div class="btn-group btn-group-sm" role="group">
       <a href="?statut=pending" class="btn btn-outline-success {% if only_pending %}active{% endif %}">À valider</a>
       <a href="?statut=all" class="btn btn-outline-success {% if not only_pending %}active{% endif %}">Toutes</a>
