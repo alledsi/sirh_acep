@@ -67,6 +67,37 @@ def get_directeur_employees(user):
 
 
 # ----------------------------------------------------------------------------
+# Périmètre du Chef d'agence
+# ----------------------------------------------------------------------------
+
+def get_chef_agence_agences(user):
+    """Retourne les agences dont l'utilisateur est chef.
+
+    Le rattachement se fait via son propre bureau d'affectation : le chef
+    d'agence appartient à un bureau, ce bureau appartient à une agence, et
+    il voit tous les employés des bureaux de cette agence.
+    """
+    try:
+        employee = user.employee
+    except Exception:
+        return Agence.objects.none()
+    if not employee.bureau_id or not employee.bureau.agence_id:
+        return Agence.objects.none()
+    return Agence.objects.filter(pk=employee.bureau.agence_id)
+
+
+def get_chef_agence_employees(user):
+    """Retourne les Employees des bureaux de l'agence du Chef d'agence."""
+    agences = get_chef_agence_agences(user)
+    if not agences.exists():
+        return Employee.objects.none()
+    return (
+        Employee.objects.filter(bureau__agence__in=agences, is_active=True)
+        .select_related('user', 'bureau__agence__mutuelle', 'direction')
+    )
+
+
+# ----------------------------------------------------------------------------
 # Stats temps réel pour un ensemble d'employés
 # ----------------------------------------------------------------------------
 
@@ -170,7 +201,8 @@ def compute_hours_per_employee(employees_qs, start_date, end_date, limit=20):
 def get_anomalies_for_user(user, only_pending=True):
     """Renvoie les anomalies visibles par l'utilisateur :
       - RH/DG : toutes
-      - Directeur : seulement celles de sa direction
+      - Directeur : celles de sa direction
+      - Chef d'agence : celles des bureaux de son agence
       - Sinon : aucune
     """
     qs = (
@@ -183,6 +215,9 @@ def get_anomalies_for_user(user, only_pending=True):
     elif user.is_directeur:
         directions = get_directeur_directions(user)
         qs = qs.filter(time_entry__employee__direction__in=directions)
+    elif user.is_chef_agence:
+        agences = get_chef_agence_agences(user)
+        qs = qs.filter(time_entry__employee__bureau__agence__in=agences)
     else:
         return Anomaly.objects.none()
 

@@ -2,11 +2,12 @@
 
 
 def user_roles(request):
-    """Ajoute aux templates : user_is_agent, user_is_directeur, user_is_rh, user_is_dg."""
+    """Ajoute aux templates : user_is_agent, user_is_chef_agence, user_is_directeur, user_is_rh, user_is_dg."""
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
         return {
             'user_is_agent': False,
+            'user_is_chef_agence': False,
             'user_is_directeur': False,
             'user_is_rh': False,
             'user_is_dg': False,
@@ -14,6 +15,7 @@ def user_roles(request):
         }
     return {
         'user_is_agent': user.is_agent,
+        'user_is_chef_agence': user.is_chef_agence,
         'user_is_directeur': user.is_directeur,
         'user_is_rh': user.is_rh,
         'user_is_dg': user.is_dg,

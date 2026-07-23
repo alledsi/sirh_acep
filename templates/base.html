@@ -52,6 +52,19 @@
   </a>
   {% endif %}
 
+  {% if user_is_chef_agence %}
+  <div class="nav-section">Agence <span class="role-tag">Chef d'agence</span></div>
+  <a href="{% url 'reporting:chef_agence_dashboard' %}" class="{% if request.resolver_match.url_name == 'chef_agence_dashboard' %}active{% endif %}">
+    <i class="bi bi-building"></i><span>Tableau agence</span>
+  </a>
+  <a href="{% url 'reporting:chef_agence_equipe' %}" class="{% if request.resolver_match.url_name == 'chef_agence_equipe' %}active{% endif %}">
+    <i class="bi bi-people"></i><span>Équipe de l'agence</span>
+  </a>
+  <a href="{% url 'reporting:chef_agence_anomalies' %}" class="{% if request.resolver_match.url_name == 'chef_agence_anomalies' %}active{% endif %}">
+    <i class="bi bi-exclamation-triangle"></i><span>Anomalies agence</span>
+  </a>
+  {% endif %}
+
   {% if user_has_global_access %}
   <div class="nav-section">Administration <span class="role-tag">RH / DG</span></div>
   <a href="{% url 'employees:employee_list' %}" class="{% if 'employee' in request.resolver_match.url_name|default:'' or 'contract' in request.resolver_match.url_name|default:'' %}active{% endif %}">
@@ -105,6 +118,7 @@
     <div class="d-flex align-items-center gap-3 flex-wrap">
       <div class="role-badges">
         {% if user_is_agent %}<span class="badge bg-success"><i class="bi bi-person"></i> Agent</span>{% endif %}
+        {% if user_is_chef_agence %}<span class="badge" style="background:#2466a3;"><i class="bi bi-building"></i> Chef d'agence</span>{% endif %}
         {% if user_is_directeur %}<span class="badge bg-primary"><i class="bi bi-briefcase"></i> Directeur</span>{% endif %}
         {% if user_is_rh %}<span class="badge bg-warning text-dark"><i class="bi bi-shield-lock"></i> RH</span>{% endif %}
         {% if user_is_dg %}<span class="badge bg-dg"><i class="bi bi-star-fill"></i> DG</span>{% endif %}

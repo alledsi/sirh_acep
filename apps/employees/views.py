@@ -114,6 +114,12 @@ class EmployeeDetailView(LoginRequiredMixin, DetailView):
             target = self.get_object()
             if get_directeur_employees(request.user).filter(pk=target.pk).exists():
                 return super().dispatch(request, *args, **kwargs)
+        # Chef d'agence : autorisé si l'employé est dans un bureau de son agence
+        if request.user.is_chef_agence:
+            from apps.reporting.services import get_chef_agence_employees
+            target = self.get_object()
+            if get_chef_agence_employees(request.user).filter(pk=target.pk).exists():
+                return super().dispatch(request, *args, **kwargs)
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied("Vous n'avez pas accès à la fiche de cet employé.")
 

@@ -11,6 +11,11 @@ urlpatterns = [
     path('direction/equipe/', views.DirecteurEquipeView.as_view(), name='directeur_equipe'),
     path('direction/anomalies/', views.DirecteurAnomaliesView.as_view(), name='directeur_anomalies'),
 
+    # Chef d'agence
+    path('agence/', views.ChefAgenceDashboardView.as_view(), name='chef_agence_dashboard'),
+    path('agence/equipe/', views.ChefAgenceEquipeView.as_view(), name='chef_agence_equipe'),
+    path('agence/anomalies/', views.ChefAgenceAnomaliesView.as_view(), name='chef_agence_anomalies'),
+
     # RH/DG
     path('statistiques/', views.RHStatsView.as_view(), name='rh_stats'),
     path('anomalies/', views.AnomalyListView.as_view(), name='anomaly_list'),

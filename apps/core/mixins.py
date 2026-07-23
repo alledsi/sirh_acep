@@ -30,3 +30,11 @@ class DirecteurRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         user = self.request.user
         return user.is_authenticated and user.is_directeur
+
+
+class ChefAgenceRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Réserve la vue aux Chefs d'agence (RH/DG y ont aussi accès)."""
+
+    def test_func(self):
+        user = self.request.user
+        return user.is_authenticated and (user.is_chef_agence or user.has_global_access)

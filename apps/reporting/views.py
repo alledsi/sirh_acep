@@ -18,7 +18,8 @@ from .forms import AnomalyValidateForm
 from .services import (
     compute_hours_per_employee, compute_period_stats, compute_today_status,
     get_anomalies_for_user, get_anomaly_breakdown, get_breakdown_by_agence,
-    get_breakdown_by_direction, get_directeur_directions, get_directeur_employees,
+    get_breakdown_by_direction, get_chef_agence_agences, get_chef_agence_employees,
+    get_directeur_directions, get_directeur_employees,
     get_global_overview, get_presence_30_days,
 )
 
@@ -29,6 +30,14 @@ class DirecteurRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         u = self.request.user
         return u.is_authenticated and (u.is_directeur or u.has_global_access)
+
+
+class ChefAgenceRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """Accès réservé aux Chefs d'agence (ou RH/DG, qui peuvent aussi voir)."""
+
+    def test_func(self):
+        u = self.request.user
+        return u.is_authenticated and (u.is_chef_agence or u.has_global_access)
 
 
 # ============ Directeur — Tableau de bord ============
@@ -149,12 +158,129 @@ class DirecteurAnomaliesView(DirecteurRequiredMixin, View):
         })
 
 
-class AnomalyValidateView(DirecteurRequiredMixin, View):
+# ============ Chef d'agence — Tableau de bord et équipe ============
+
+class ChefAgenceDashboardView(ChefAgenceRequiredMixin, View):
+    template_name = 'reporting/chef_agence_dashboard.html'
+
+    def get(self, request):
+        agences = get_chef_agence_agences(request.user)
+        if not agences.exists() and not request.user.has_global_access:
+            messages.warning(
+                request,
+                "Aucune agence ne vous est rattachée. Vérifiez votre affectation "
+                "de bureau ou demandez à la RH de vous rattacher à une agence."
+            )
+            return redirect('core:home')
+
+        employees = get_chef_agence_employees(request.user)
+        today_status = compute_today_status(employees)
+
+        # Anomalies en attente pour l'agence
+        anomalies_pending = get_anomalies_for_user(request.user, only_pending=True)[:10]
+        anomalies_pending_count = get_anomalies_for_user(request.user, only_pending=True).count()
+
+        # Stats 30 derniers jours
+        today = timezone.localdate()
+        d30 = today - timedelta(days=30)
+        period_stats = compute_period_stats(employees, d30, today)
+
+        # Histogramme heures par employé — mois en cours
+        month_start = today.replace(day=1)
+        hours_per_employee = compute_hours_per_employee(employees, month_start, today)
+
+        return render(request, self.template_name, {
+            'agences': agences,
+            'employees': employees,
+            'today_status': today_status,
+            'today_entries_by_employee': {e.employee_id: e for e in today_status['today_entries']},
+            'anomalies_pending': anomalies_pending,
+            'anomalies_pending_count': anomalies_pending_count,
+            'period_stats': period_stats,
+            'hours_per_employee_data': json.dumps(hours_per_employee),
+            'hours_per_employee_count': len(hours_per_employee),
+        })
+
+
+class ChefAgenceEquipeView(ChefAgenceRequiredMixin, View):
+    template_name = 'reporting/chef_agence_equipe.html'
+
+    def get(self, request):
+        employees = get_chef_agence_employees(request.user)
+        today = timezone.localdate()
+        month_start = today.replace(day=1)
+
+        from apps.attendance.models import TimeEntry
+        employee_stats = []
+        for emp in employees:
+            entries = TimeEntry.objects.filter(
+                employee=emp, work_date__gte=month_start, work_date__lte=today,
+            )
+            hours = timedelta()
+            days = 0
+            retards = 0
+            anomalies = 0
+            for e in entries:
+                d = e.worked_duration
+                if d:
+                    hours += d
+                    days += 1
+                for a in e.anomalies.all():
+                    anomalies += 1
+                    if a.anomaly_type == Anomaly.TYPE_LATE:
+                        retards += 1
+            total_min = int(hours.total_seconds() // 60)
+            h, m = divmod(total_min, 60)
+            employee_stats.append({
+                'employee': emp,
+                'hours': f"{h}h{m:02d}",
+                'days': days,
+                'retards': retards,
+                'anomalies': anomalies,
+            })
+
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(employee_stats, 30)
+        page_obj = paginator.get_page(request.GET.get('page'))
+
+        return render(request, self.template_name, {
+            'employee_stats': page_obj.object_list,
+            'employee_stats_count': paginator.count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
+            'agences': get_chef_agence_agences(request.user),
+        })
+
+
+class ChefAgenceAnomaliesView(ChefAgenceRequiredMixin, View):
+    template_name = 'reporting/anomaly_list.html'
+
+    def get(self, request):
+        from django.core.paginator import Paginator
+        only_pending = request.GET.get('statut', 'pending') == 'pending'
+        anomalies_qs = get_anomalies_for_user(request.user, only_pending=only_pending)
+        paginator = Paginator(anomalies_qs, 30)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        return render(request, self.template_name, {
+            'anomalies': page_obj.object_list,
+            'anomalies_count': paginator.count,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'is_paginated': paginator.num_pages > 1,
+            'only_pending': only_pending,
+            'scope_label': 'mon agence' if request.user.is_chef_agence and not request.user.has_global_access else 'toutes les agences',
+        })
+
+
+class AnomalyValidateView(LoginRequiredMixin, View):
+    """Validation d'une anomalie — accessible aux Directeurs, Chefs d'agence, RH et DG.
+    L'autorisation fine est vérifiée via get_anomalies_for_user."""
     template_name = 'reporting/anomaly_validate.html'
 
     def _get_anomaly(self, request, pk):
         anomaly = get_object_or_404(Anomaly, pk=pk)
-        # Vérifier que l'utilisateur a le droit
         allowed_ids = list(get_anomalies_for_user(request.user, only_pending=False).values_list('pk', flat=True))
         if anomaly.pk not in allowed_ids:
             raise Http404("Anomalie non visible pour vous.")
@@ -175,10 +301,14 @@ class AnomalyValidateView(DirecteurRequiredMixin, View):
             anomaly.acknowledgement_note = form.cleaned_data['note']
             anomaly.save()
             messages.success(request, "Anomalie validée.")
-            # Redirige vers la liste d'anomalies appropriée
-            if request.user.is_directeur and not request.user.has_global_access:
+            # Redirige vers la liste d'anomalies appropriée au rôle
+            if request.user.has_global_access:
+                return redirect('reporting:anomaly_list')
+            if request.user.is_directeur:
                 return redirect('reporting:directeur_anomalies')
-            return redirect('reporting:anomaly_list')
+            if request.user.is_chef_agence:
+                return redirect('reporting:chef_agence_anomalies')
+            return redirect('core:home')
         return render(request, self.template_name, {'anomaly': anomaly, 'form': form})
 
 

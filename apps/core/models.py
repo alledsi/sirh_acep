@@ -41,11 +41,13 @@ class User(AbstractUser):
     """
 
     ROLE_AGENT = 'AGENT'
+    ROLE_CHEF_AGENCE = 'CHEF_AGENCE'
     ROLE_DIRECTEUR = 'DIRECTEUR'
     ROLE_RH = 'RH'
     ROLE_DG = 'DG'
     ROLE_CHOICES = [
         (ROLE_AGENT, 'Agent'),
+        (ROLE_CHEF_AGENCE, "Chef d'agence"),
         (ROLE_DIRECTEUR, 'Directeur'),
         (ROLE_RH, 'Ressources Humaines'),
         (ROLE_DG, 'Directeur Général'),
@@ -64,7 +66,7 @@ class User(AbstractUser):
         'Rôles',
         default=list,
         blank=True,
-        help_text='Liste de rôles (cumulables) : AGENT, DIRECTEUR, RH, DG',
+        help_text='Liste de rôles (cumulables) : AGENT, CHEF_AGENCE, DIRECTEUR, RH, DG',
     )
 
     USERNAME_FIELD = 'matricule'
@@ -94,6 +96,10 @@ class User(AbstractUser):
     @property
     def is_directeur(self):
         return self.has_role(self.ROLE_DIRECTEUR)
+
+    @property
+    def is_chef_agence(self):
+        return self.has_role(self.ROLE_CHEF_AGENCE)
 
     @property
     def is_rh(self):
