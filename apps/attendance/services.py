@@ -19,6 +19,28 @@ from django.utils import timezone
 from apps.core.services import get_client_ip
 from apps.organization.services import resolve_bureau_from_ip
 
+
+# Bureaux "jumeaux" — même bâtiment, mêmes IPs.
+# Si un employé est affecté à l'un et pointe depuis l'IP de l'autre, on
+# conserve son bureau d'affectation comme localisation (évite un faux
+# « Incohérent » alors qu'il est bien physiquement au bon endroit).
+TWIN_BUREAU_CODES = {'10026', '11111'}  # Administration DAKAR / SIEGE DAKAR
+
+
+def _resolve_effective_bureau(resolved_bureau, employee):
+    """Retourne le bureau à enregistrer pour un pointage.
+
+    Règle : si l'IP résout vers un bureau jumeau ET que l'employé est affecté
+    à l'autre jumeau du groupe, on garde son bureau d'affectation.
+    Sinon on retourne le bureau résolu tel quel.
+    """
+    if resolved_bureau is None or employee is None or not employee.bureau_id:
+        return resolved_bureau
+    if (resolved_bureau.code in TWIN_BUREAU_CODES
+            and employee.bureau.code in TWIN_BUREAU_CODES):
+        return employee.bureau
+    return resolved_bureau
+
 from .constants import (
     DEFAULT_ARRIVAL_REFERENCE,
     DEFAULT_ARRIVAL_TOLERANCE,
@@ -88,7 +110,9 @@ def record_punch(action: str, employee, request) -> TimeEntry:
     entry = get_or_create_today_entry(employee)
     now = timezone.now()
     ip = get_client_ip(request)
-    bureau = resolve_bureau_from_ip(ip) if ip else None
+    resolved = resolve_bureau_from_ip(ip) if ip else None
+    # Application de la règle des bureaux jumeaux (mêmes IPs, même bâtiment)
+    bureau = _resolve_effective_bureau(resolved, employee)
 
     if action == ACTION_ARRIVAL:
         if entry.arrival_time:
