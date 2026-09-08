@@ -274,25 +274,17 @@ class ChefAgenceAnomaliesView(ChefAgenceRequiredMixin, View):
         })
 
 
-class AnomalyValidateView(LoginRequiredMixin, View):
-    """Validation d'une anomalie — accessible aux Directeurs, Chefs d'agence, RH et DG.
-    L'autorisation fine est vérifiée via get_anomalies_for_user."""
+class AnomalyValidateView(GlobalAccessRequiredMixin, View):
+    """Validation d'une anomalie — réservé exclusivement à la RH / DG."""
     template_name = 'reporting/anomaly_validate.html'
 
-    def _get_anomaly(self, request, pk):
-        anomaly = get_object_or_404(Anomaly, pk=pk)
-        allowed_ids = list(get_anomalies_for_user(request.user, only_pending=False).values_list('pk', flat=True))
-        if anomaly.pk not in allowed_ids:
-            raise Http404("Anomalie non visible pour vous.")
-        return anomaly
-
     def get(self, request, pk):
-        anomaly = self._get_anomaly(request, pk)
+        anomaly = get_object_or_404(Anomaly, pk=pk)
         form = AnomalyValidateForm()
         return render(request, self.template_name, {'anomaly': anomaly, 'form': form})
 
     def post(self, request, pk):
-        anomaly = self._get_anomaly(request, pk)
+        anomaly = get_object_or_404(Anomaly, pk=pk)
         form = AnomalyValidateForm(request.POST)
         if form.is_valid():
             anomaly.is_acknowledged = True
@@ -301,14 +293,7 @@ class AnomalyValidateView(LoginRequiredMixin, View):
             anomaly.acknowledgement_note = form.cleaned_data['note']
             anomaly.save()
             messages.success(request, "Anomalie validée.")
-            # Redirige vers la liste d'anomalies appropriée au rôle
-            if request.user.has_global_access:
-                return redirect('reporting:anomaly_list')
-            if request.user.is_directeur:
-                return redirect('reporting:directeur_anomalies')
-            if request.user.is_chef_agence:
-                return redirect('reporting:chef_agence_anomalies')
-            return redirect('core:home')
+            return redirect('reporting:anomaly_list')
         return render(request, self.template_name, {'anomaly': anomaly, 'form': form})
 
 

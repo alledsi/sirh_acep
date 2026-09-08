@@ -49,10 +49,14 @@
               {% endif %}
             </td>
             <td>
-              {% if not a.is_acknowledged %}
-                <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-success">Valider</a>
+              {% if user_has_global_access %}
+                {% if not a.is_acknowledged %}
+                  <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-success">Valider</a>
+                {% else %}
+                  <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                {% endif %}
               {% else %}
-                <a href="{% url 'reporting:anomaly_validate' a.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                <small class="text-muted"><i class="bi bi-info-circle"></i> RH uniquement</small>
               {% endif %}
             </td>
           </tr>
