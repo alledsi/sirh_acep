@@ -37,8 +37,6 @@
               <td>
                 {% if e.arrival_bureau %}
                   <strong>{{ e.arrival_bureau.name }}</strong>
-                  {% if e.bureau_coherent %}<span class="coherence-tag ok ms-1">✓</span>
-                  {% else %}<span class="coherence-tag warn ms-1">⚠</span>{% endif %}
                 {% elif e.arrival_ip %}
                   <em class="text-danger small">Bureau non identifié</em>
                 {% else %}—{% endif %}
@@ -52,8 +50,6 @@
               <td>
                 {% if e.departure_bureau %}
                   <strong>{{ e.departure_bureau.name }}</strong>
-                  {% if e.departure_bureau_coherent %}<span class="coherence-tag ok ms-1">✓</span>
-                  {% else %}<span class="coherence-tag warn ms-1">⚠</span>{% endif %}
                 {% else %}—{% endif %}
               </td>
               <td>{% if e.worked_duration %}{{ e.worked_duration|hm }}{% else %}—{% endif %}</td>

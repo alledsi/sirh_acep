@@ -62,7 +62,7 @@
       </div>
       <table class="table modern-table">
         <thead>
-          <tr><th>Employé</th><th>Statut</th><th>Bureau de connexion</th><th>Affectation</th><th>Cohérence</th></tr>
+          <tr><th>Employé</th><th>Statut</th><th>Bureau de connexion</th><th>Affectation</th></tr>
         </thead>
         <tbody>
           {% for e in employees|slice:":10" %}
@@ -82,11 +82,6 @@
                   {% else %}—{% endif %}
                 </td>
                 <td>{{ e.bureau.name }}</td>
-                <td>
-                  {% if te.bureau_coherent is None %}—
-                  {% elif te.bureau_coherent %}<span class="coherence-tag ok">✓</span>
-                  {% else %}<span class="coherence-tag warn">⚠</span>{% endif %}
-                </td>
               {% endwith %}
             </tr>
           {% endfor %}

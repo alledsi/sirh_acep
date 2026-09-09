@@ -24,13 +24,6 @@
         <div>
           <i class="bi bi-bookmark-check" style="color: var(--acep-green);"></i>
           <strong>Votre affectation :</strong> {{ employee.bureau.name }}
-          {% if today_entry.arrival_bureau %}
-            {% if today_entry.bureau_coherent %}
-              <span class="coherence-tag ok ms-1">✓ Cohérent</span>
-            {% else %}
-              <span class="coherence-tag warn ms-1">⚠ Incohérent</span>
-            {% endif %}
-          {% endif %}
         </div>
       </div>
 
