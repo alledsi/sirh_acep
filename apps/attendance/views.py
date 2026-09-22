@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q as models_q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -421,27 +422,162 @@ class JustificationCreateView(LoginRequiredMixin, View):
 
 
 class JustificationReviewListView(GlobalAccessRequiredMixin, ListView):
-    """Vue RH/DG : liste des justifications à valider."""
+    """Vue RH/DG : liste des justifications avec filtres et pagination."""
     model = AbsenceJustification
     template_name = 'attendance/justification_review_list.html'
     context_object_name = 'justifications'
     paginate_by = 50
 
-    def get_queryset(self):
-        only_pending = self.request.GET.get('statut', 'pending') == 'pending'
-        qs = AbsenceJustification.objects.select_related('employee__user', 'reviewed_by').order_by('-absence_date')
-        if only_pending:
+    def _filtered_queryset(self):
+        req = self.request
+        qs = (
+            AbsenceJustification.objects
+            .select_related('employee__user', 'employee__bureau__agence', 'employee__direction', 'reviewed_by')
+            .order_by('-absence_date')
+        )
+        statut = req.GET.get('statut', 'pending')
+        if statut in ('PENDING', 'APPROVED', 'REJECTED'):
+            qs = qs.filter(status=statut)
+        elif statut == 'pending':
             qs = qs.filter(status=AbsenceJustification.STATUS_PENDING)
+        # sinon 'all' → tous
+
+        jtype = req.GET.get('type', '')
+        if jtype in ('ABSENCE', 'LATE', 'EARLY_DEPARTURE', 'OTHER'):
+            qs = qs.filter(justification_type=jtype)
+
+        q = (req.GET.get('q') or '').strip()
+        if q:
+            qs = qs.filter(
+                models_q(employee__user__matricule__icontains=q) |
+                models_q(employee__user__first_name__icontains=q) |
+                models_q(employee__user__last_name__icontains=q)
+            )
+
+        mutuelle_id = req.GET.get('mutuelle')
+        if mutuelle_id:
+            qs = qs.filter(employee__bureau__agence__mutuelle_id=mutuelle_id)
+        agence_id = req.GET.get('agence')
+        if agence_id:
+            qs = qs.filter(employee__bureau__agence_id=agence_id)
+        direction_id = req.GET.get('direction')
+        if direction_id:
+            qs = qs.filter(employee__direction_id=direction_id)
+
+        start_str = req.GET.get('start')
+        if start_str:
+            try:
+                start = datetime.strptime(start_str, '%Y-%m-%d').date()
+                qs = qs.filter(absence_date__gte=start)
+            except ValueError:
+                pass
+        end_str = req.GET.get('end')
+        if end_str:
+            try:
+                end = datetime.strptime(end_str, '%Y-%m-%d').date()
+                qs = qs.filter(absence_date__lte=end)
+            except ValueError:
+                pass
         return qs
+
+    def get_queryset(self):
+        return self._filtered_queryset()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['only_pending'] = self.request.GET.get('statut', 'pending') == 'pending'
+        req = self.request
+        statut = req.GET.get('statut', 'pending')
+        ctx['only_pending'] = statut == 'pending'
+        ctx['filters'] = {
+            'statut': statut,
+            'type': req.GET.get('type', ''),
+            'q': req.GET.get('q', ''),
+            'mutuelle': req.GET.get('mutuelle', ''),
+            'agence': req.GET.get('agence', ''),
+            'direction': req.GET.get('direction', ''),
+            'start': req.GET.get('start', ''),
+            'end': req.GET.get('end', ''),
+        }
+        from apps.organization.models import Agence, Direction, Mutuelle
+        ctx['mutuelles'] = Mutuelle.objects.filter(is_active=True)
+        ctx['agences'] = Agence.objects.filter(is_active=True).select_related('mutuelle')
+        ctx['directions'] = Direction.objects.filter(is_active=True)
+        ctx['type_choices'] = AbsenceJustification.TYPE_CHOICES
+        ctx['status_choices'] = AbsenceJustification.STATUS_CHOICES
+        ctx['total_count'] = ctx['paginator'].count if ctx.get('paginator') else self._filtered_queryset().count()
         return ctx
 
 
+class JustificationExportView(GlobalAccessRequiredMixin, View):
+    """Export Excel de la liste filtrée des justifications."""
+
+    def get(self, request):
+        import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from django.http import HttpResponse
+
+        # Réutilise la même logique de filtrage que la liste
+        list_view = JustificationReviewListView()
+        list_view.request = request
+        qs = list_view._filtered_queryset()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Justifications'
+
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='02564A', end_color='02564A', fill_type='solid')
+        title_font = Font(bold=True, size=14, color='02564A')
+
+        ws['A1'] = f"ACEP — Justifications d'absence ({qs.count()} enregistrement(s))"
+        ws['A1'].font = title_font
+        ws.merge_cells('A1:J1')
+        ws['A1'].alignment = Alignment(horizontal='center')
+
+        headers = ['Date', 'Matricule', 'Nom complet', 'Direction', 'Bureau',
+                   'Type', 'Motif', 'Statut', 'Validée par', 'Note valideur']
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=3, column=col, value=h)
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = Alignment(horizontal='center')
+
+        row_num = 4
+        for j in qs:
+            emp = j.employee
+            ws.cell(row=row_num, column=1, value=j.absence_date.strftime('%d/%m/%Y'))
+            ws.cell(row=row_num, column=2, value=emp.user.matricule)
+            ws.cell(row=row_num, column=3, value=emp.user.get_full_name() or emp.user.matricule)
+            ws.cell(row=row_num, column=4, value=emp.direction.name if emp.direction else '')
+            ws.cell(row=row_num, column=5, value=emp.bureau.name if emp.bureau else '')
+            ws.cell(row=row_num, column=6, value=j.get_justification_type_display())
+            ws.cell(row=row_num, column=7, value=j.reason or '')
+            ws.cell(row=row_num, column=8, value=j.get_status_display())
+            ws.cell(row=row_num, column=9, value=(
+                j.reviewed_by.get_full_name() if j.reviewed_by else ''))
+            ws.cell(row=row_num, column=10, value=j.review_note or '')
+            row_num += 1
+
+        widths = [12, 12, 30, 25, 25, 16, 40, 14, 22, 30]
+        for col, w in enumerate(widths, 1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        from django.utils import timezone as _tz
+        stamp = _tz.localtime().strftime('%Y%m%d_%H%M')
+        response['Content-Disposition'] = f'attachment; filename="justifications_acep_{stamp}.xlsx"'
+        wb.save(response)
+        return response
+
+
 class JustificationReviewView(GlobalAccessRequiredMixin, View):
-    """Validation/rejet d'une justification."""
+    """Validation/rejet d'une justification + option de régularisation.
+
+    Si des heures sont fournies (arrival_time, departure_time, etc.),
+    on régularise le TimeEntry correspondant à la date d'absence.
+    """
 
     def post(self, request, pk):
         justification = get_object_or_404(AbsenceJustification, pk=pk)
@@ -450,10 +586,8 @@ class JustificationReviewView(GlobalAccessRequiredMixin, View):
 
         if action == 'approve':
             justification.status = AbsenceJustification.STATUS_APPROVED
-            messages.success(request, "Justification approuvée.")
         elif action == 'reject':
             justification.status = AbsenceJustification.STATUS_REJECTED
-            messages.warning(request, "Justification rejetée.")
         else:
             messages.error(request, "Action inconnue.")
             return redirect('attendance:justification_review_list')
@@ -462,4 +596,59 @@ class JustificationReviewView(GlobalAccessRequiredMixin, View):
         justification.reviewed_at = timezone.now()
         justification.review_note = note
         justification.save()
+
+        # --- Régularisation optionnelle (uniquement si approuvée + heures saisies) ---
+        regularized = False
+        if action == 'approve':
+            def _parse_dt(field):
+                v = (request.POST.get(field) or '').strip()
+                if not v:
+                    return None
+                try:
+                    naive = datetime.strptime(
+                        f'{justification.absence_date} {v}', '%Y-%m-%d %H:%M',
+                    )
+                    return timezone.make_aware(naive) if timezone.is_naive(naive) else naive
+                except ValueError:
+                    return None
+
+            arrival = _parse_dt('arrival_time')
+            break_start = _parse_dt('break_start')
+            break_end = _parse_dt('break_end')
+            departure = _parse_dt('departure_time')
+
+            if any([arrival, break_start, break_end, departure]):
+                entry, _ = TimeEntry.objects.get_or_create(
+                    employee=justification.employee,
+                    work_date=justification.absence_date,
+                )
+                if arrival:
+                    entry.arrival_time = arrival
+                if break_start:
+                    entry.break_start = break_start
+                if break_end:
+                    entry.break_end = break_end
+                if departure:
+                    entry.departure_time = departure
+                entry.is_regularized = True
+                entry.regularization_reason = (
+                    f"Régularisation suite à justification approuvée "
+                    f"({justification.get_justification_type_display()}) : "
+                    f"{justification.reason[:200]}"
+                )
+                entry.regularized_by = request.user
+                entry.regularized_at = timezone.now()
+                entry.save()
+                from .services import detect_anomalies
+                detect_anomalies(entry)
+                regularized = True
+
+        if action == 'approve':
+            if regularized:
+                messages.success(request, "Justification approuvée et pointage régularisé.")
+            else:
+                messages.success(request, "Justification approuvée.")
+        else:
+            messages.warning(request, "Justification rejetée.")
+
         return redirect('attendance:justification_review_list')

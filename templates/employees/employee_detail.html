@@ -41,7 +41,13 @@
         <p class="mb-1"><i class="bi bi-envelope"></i> {{ employee.user.email }}</p>
         {% if employee.user.phone %}<p class="mb-1"><i class="bi bi-telephone"></i> {{ employee.user.phone }}</p>{% endif %}
         <p class="mb-1"><i class="bi bi-calendar-check"></i> Embauché le {{ employee.hire_date|date:'d/m/Y' }}</p>
-        {% if employee.birth_date %}<p class="mb-1"><i class="bi bi-cake2"></i> Né le {{ employee.birth_date|date:'d/m/Y' }}</p>{% endif %}
+        {% if employee.birth_date %}
+          {% if user_has_global_access or user.employee.pk == employee.pk %}
+            <p class="mb-1"><i class="bi bi-cake2"></i> Né le {{ employee.birth_date|date:'d/m/Y' }}</p>
+          {% else %}
+            <p class="mb-1"><i class="bi bi-cake2"></i> Né le {{ employee.birth_date|date:'d/m' }}</p>
+          {% endif %}
+        {% endif %}
       </div>
 
       <div class="mt-3 d-grid gap-2">

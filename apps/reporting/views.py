@@ -1,6 +1,6 @@
 """Vues du module Reporting — Sprint 5."""
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -435,8 +435,22 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
                     status = 'absent'
                     absent_count += 1
                 rows.append({'employee': emp, 'entry': entry, 'status': status})
-            order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
-            rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
+
+            sort_by = request.GET.get('sort', 'status')
+            if sort_by == 'arrival':
+                # Tri par heure d'arrivée croissante ; les absents en fin de liste.
+                far_future = datetime.max.replace(tzinfo=timezone.get_current_timezone())
+                rows.sort(key=lambda r: (
+                    r['entry'].arrival_time if r['entry'] and r['entry'].arrival_time else far_future,
+                    r['employee'].user.matricule,
+                ))
+            elif sort_by == 'name':
+                rows.sort(key=lambda r: (
+                    (r['employee'].user.get_full_name() or r['employee'].user.matricule).lower()
+                ))
+            else:  # 'status' par défaut
+                order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
+                rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
         else:
             # Mode agrégé : compte les jours présents/absents sur la période
             entries_by_emp_map = {}
@@ -518,6 +532,7 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
                 (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre'),
             ],
             'period_choices': self.PERIOD_CHOICES,
+            'current_sort': request.GET.get('sort', 'status'),
         })
 
 

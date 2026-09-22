@@ -102,6 +102,17 @@
       </select>
     </div>
 
+    {% if period == 'jour' %}
+    <div class="col-md-2">
+      <label class="form-label small">Trier par</label>
+      <select name="sort" class="form-select form-select-sm">
+        <option value="status" {% if current_sort == 'status' %}selected{% endif %}>Statut (présents d'abord)</option>
+        <option value="arrival" {% if current_sort == 'arrival' %}selected{% endif %}>Heure d'arrivée</option>
+        <option value="name" {% if current_sort == 'name' %}selected{% endif %}>Nom</option>
+      </select>
+    </div>
+    {% endif %}
+
     <div class="col-md-12 d-flex gap-2 mt-2">
       <button class="btn-acep" style="width:auto; padding:6px 14px;"><i class="bi bi-funnel"></i> Filtrer</button>
       <a href="{% url 'reporting:export_stats' %}?type=daily_full&period={{ period }}&date={{ start|date:'Y-m-d' }}&start_date={{ start|date:'Y-m-d' }}&end_date={{ end|date:'Y-m-d' }}&year={{ year }}&month={{ month }}&mutuelle={{ filters.mutuelle }}&agence={{ filters.agence }}&direction={{ filters.direction }}" class="btn btn-outline-success btn-sm">

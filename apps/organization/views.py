@@ -7,7 +7,7 @@ Pour Bureau, le formulaire intègre un formset inline pour gérer les plages IP
 """
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, ProtectedError, Q as models_q
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import (
@@ -230,7 +230,54 @@ class BureauDeleteView(GlobalAccessRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context['cancel_url'] = self.success_url
         context['entity_label'] = 'le bureau'
+        # Compter les employés et pointages liés pour prévenir avant suppression
+        from apps.employees.models import Employee
+        from apps.attendance.models import TimeEntry
+        bureau = self.object
+        emp_count = Employee.objects.filter(bureau=bureau).count()
+        entries_count = TimeEntry.objects.filter(
+            models_q(arrival_bureau=bureau) | models_q(departure_bureau=bureau)
+            | models_q(break_start_bureau=bureau) | models_q(break_end_bureau=bureau)
+        ).count()
+        context['blockers'] = {
+            'employees': emp_count,
+            'time_entries': entries_count,
+        }
+        context['is_blocked'] = emp_count > 0 or entries_count > 0
         return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        from apps.employees.models import Employee
+        from apps.attendance.models import TimeEntry
+        emp_count = Employee.objects.filter(bureau=self.object).count()
+        entries_count = TimeEntry.objects.filter(
+            models_q(arrival_bureau=self.object) | models_q(departure_bureau=self.object)
+            | models_q(break_start_bureau=self.object) | models_q(break_end_bureau=self.object)
+        ).count()
+        if emp_count or entries_count:
+            parts = []
+            if emp_count:
+                parts.append(f'{emp_count} employé(s) affecté(s)')
+            if entries_count:
+                parts.append(f'{entries_count} pointage(s) historique(s)')
+            messages.error(
+                request,
+                "Suppression impossible : ce bureau est encore lié à "
+                + " et ".join(parts) + ". "
+                "Réaffectez d'abord les employés vers un autre bureau, "
+                "ou désactivez ce bureau au lieu de le supprimer."
+            )
+            return redirect('organization:bureau_list')
+        try:
+            self.object.delete()
+            messages.success(request, "Bureau supprimé.")
+        except ProtectedError as e:
+            messages.error(
+                request,
+                "Suppression impossible : des données sont encore liées à ce bureau."
+            )
+        return redirect(self.success_url)
 
 
 # ============ Directions ============

@@ -29,5 +29,6 @@ urlpatterns = [
     path('justifications/', views.MyJustificationListView.as_view(), name='my_justifications'),
     path('justifications/nouvelle/', views.JustificationCreateView.as_view(), name='my_justifications_new'),
     path('justifications/a-valider/', views.JustificationReviewListView.as_view(), name='justification_review_list'),
+    path('justifications/export/', views.JustificationExportView.as_view(), name='justification_export'),
     path('justifications/<int:pk>/valider/', views.JustificationReviewView.as_view(), name='justification_review'),
 ]

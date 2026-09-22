@@ -5,10 +5,69 @@
 
 {% block content %}
 <div class="card-section">
-  <ul class="nav nav-tabs mb-3">
-    <li class="nav-item"><a class="nav-link {% if only_pending %}active{% endif %}" href="?statut=pending">En attente</a></li>
-    <li class="nav-item"><a class="nav-link {% if not only_pending %}active{% endif %}" href="?statut=all">Toutes</a></li>
-  </ul>
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label small">Statut</label>
+      <select name="statut" class="form-select form-select-sm">
+        <option value="pending" {% if filters.statut == 'pending' %}selected{% endif %}>En attente</option>
+        <option value="PENDING" {% if filters.statut == 'PENDING' %}selected{% endif %}>En attente (strict)</option>
+        <option value="APPROVED" {% if filters.statut == 'APPROVED' %}selected{% endif %}>Approuvées</option>
+        <option value="REJECTED" {% if filters.statut == 'REJECTED' %}selected{% endif %}>Rejetées</option>
+        <option value="all" {% if filters.statut == 'all' %}selected{% endif %}>Toutes</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Type</label>
+      <select name="type" class="form-select form-select-sm">
+        <option value="">Tous</option>
+        {% for code, label in type_choices %}
+          <option value="{{ code }}" {% if filters.type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Recherche (nom, matricule)</label>
+      <input type="search" name="q" value="{{ filters.q }}" class="form-control form-control-sm" placeholder="Nom ou matricule">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Mutuelle</label>
+      <select name="mutuelle" class="form-select form-select-sm">
+        <option value="">Toutes</option>
+        {% for m in mutuelles %}<option value="{{ m.pk }}" {% if filters.mutuelle == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Agence</label>
+      <select name="agence" class="form-select form-select-sm">
+        <option value="">Toutes</option>
+        {% for a in agences %}<option value="{{ a.pk }}" {% if filters.agence == a.pk|stringformat:'s' %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Direction</label>
+      <select name="direction" class="form-select form-select-sm">
+        <option value="">Toutes</option>
+        {% for d in directions %}<option value="{{ d.pk }}" {% if filters.direction == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Du</label>
+      <input type="date" name="start" value="{{ filters.start }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Au</label>
+      <input type="date" name="end" value="{{ filters.end }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-12 d-flex gap-2 mt-2">
+      <button class="btn-acep" style="width:auto; padding:6px 14px;"><i class="bi bi-funnel"></i> Filtrer</button>
+      <a href="{% url 'attendance:justification_review_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i> Réinitialiser</a>
+      <a href="{% url 'attendance:justification_export' %}?statut={{ filters.statut }}&type={{ filters.type }}&q={{ filters.q }}&mutuelle={{ filters.mutuelle }}&agence={{ filters.agence }}&direction={{ filters.direction }}&start={{ filters.start }}&end={{ filters.end }}" class="btn btn-outline-success btn-sm ms-auto">
+        <i class="bi bi-file-earmark-excel"></i> Export Excel
+      </a>
+    </div>
+  </form>
+
+  <h6 class="mb-2"><i class="bi bi-file-earmark-check"></i> {{ total_count }} justification{{ total_count|pluralize }}</h6>
 
   {% if justifications %}
   <div class="table-responsive">
@@ -17,6 +76,7 @@
         <tr>
           <th>Date</th>
           <th>Employé</th>
+          <th>Direction</th>
           <th>Type</th>
           <th>Motif</th>
           <th>Pièce jointe</th>
@@ -28,7 +88,12 @@
         {% for j in justifications %}
           <tr>
             <td><strong>{{ j.absence_date|date:'d/m/Y' }}</strong></td>
-            <td><code>{{ j.employee.user.matricule }}</code><br><small>{{ j.employee.user.get_full_name|default:'' }}</small></td>
+            <td>
+              <code>{{ j.employee.user.matricule }}</code>
+              <small class="d-block">{{ j.employee.user.get_full_name|default:'' }}</small>
+              <small class="text-muted d-block">{{ j.employee.bureau.name }}</small>
+            </td>
+            <td>{{ j.employee.direction.name }}</td>
             <td>{{ j.get_justification_type_display }}</td>
             <td><small>{{ j.reason|truncatechars:100 }}</small></td>
             <td>
@@ -42,14 +107,33 @@
             </td>
             <td>
               {% if j.status == 'PENDING' %}
-                <form method="post" action="{% url 'attendance:justification_review' j.pk %}" class="d-inline">
-                  {% csrf_token %}
-                  <input type="text" name="note" placeholder="Note (optionnelle)" class="form-control form-control-sm mb-1" style="width:200px;">
-                  <button name="action" value="approve" class="btn btn-sm btn-outline-success" onclick="return confirm('Approuver cette justification ?');"><i class="bi bi-check"></i></button>
-                  <button name="action" value="reject" class="btn btn-sm btn-outline-danger" onclick="return confirm('Rejeter cette justification ?');"><i class="bi bi-x"></i></button>
-                </form>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#j-{{ j.pk }}">
+                  <i class="bi bi-check2-square"></i> Traiter
+                </button>
+                <div class="collapse mt-2" id="j-{{ j.pk }}">
+                  <form method="post" action="{% url 'attendance:justification_review' j.pk %}" class="p-2 border rounded" style="background:#f8f9fa;">
+                    {% csrf_token %}
+                    <label class="form-label small mb-1"><strong>Régulariser le pointage du {{ j.absence_date|date:'d/m/Y' }} (optionnel)</strong></label>
+                    <div class="row g-1 mb-2">
+                      <div class="col-6"><input type="time" name="arrival_time" class="form-control form-control-sm" placeholder="Arrivée" title="Arrivée"></div>
+                      <div class="col-6"><input type="time" name="departure_time" class="form-control form-control-sm" placeholder="Départ" title="Départ"></div>
+                      <div class="col-6"><input type="time" name="break_start" class="form-control form-control-sm" placeholder="Début pause" title="Début pause"></div>
+                      <div class="col-6"><input type="time" name="break_end" class="form-control form-control-sm" placeholder="Fin pause" title="Fin pause"></div>
+                    </div>
+                    <input type="text" name="note" placeholder="Note (optionnelle)" class="form-control form-control-sm mb-2">
+                    <div class="d-flex gap-1">
+                      <button name="action" value="approve" class="btn btn-sm btn-outline-success flex-fill" onclick="return confirm('Approuver cette justification ?');">
+                        <i class="bi bi-check"></i> Approuver{% if True %} + Régulariser{% endif %}
+                      </button>
+                      <button name="action" value="reject" class="btn btn-sm btn-outline-danger flex-fill" onclick="return confirm('Rejeter cette justification ?');">
+                        <i class="bi bi-x"></i> Rejeter
+                      </button>
+                    </div>
+                    <small class="text-muted d-block mt-1">Laisser les heures vides pour approuver sans régulariser.</small>
+                  </form>
+                </div>
               {% else %}
-                <small>par {{ j.reviewed_by.get_full_name|default:j.reviewed_by.matricule }} le {{ j.reviewed_at|date:'d/m/Y' }}</small>
+                <small>par {{ j.reviewed_by.get_full_name|default:j.reviewed_by.matricule }}<br>{{ j.reviewed_at|date:'d/m/Y' }}</small>
                 {% if j.review_note %}<small class="d-block text-muted"><em>{{ j.review_note }}</em></small>{% endif %}
               {% endif %}
             </td>
@@ -59,7 +143,7 @@
     </table>
   </div>
   {% else %}
-    <p class="text-muted text-center mt-4"><i class="bi bi-emoji-smile"></i> Aucune justification {% if only_pending %}en attente{% endif %}.</p>
+    <p class="text-muted text-center mt-4"><i class="bi bi-emoji-smile"></i> Aucune justification pour ces filtres.</p>
   {% endif %}
 
   {% include '_pagination.html' %}
