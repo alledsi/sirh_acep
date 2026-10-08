@@ -60,35 +60,37 @@
         <h5 class="mb-0"><i class="bi bi-people"></i> Statut en temps réel — Employés de l'agence</h5>
         <a href="{% url 'reporting:chef_agence_equipe' %}" class="btn btn-sm btn-outline-secondary">Voir toute l'équipe</a>
       </div>
-      <table class="table modern-table">
-        <thead>
-          <tr><th>Employé</th><th>Statut</th><th>Bureau de connexion</th><th>Affectation</th></tr>
-        </thead>
-        <tbody>
-          {% for e in employees|slice:":10" %}
-            <tr>
-              <td><span class="avatar">{{ e.initials }}</span> {{ e.user.get_full_name|default:e.user.matricule }}</td>
-              {% with te=today_entries_by_employee|get_item:e.pk %}
-                <td>
-                  {% if te %}
-                    {% if te.departure_time %}<span class="badge bg-secondary">Parti</span>
-                    {% elif te.is_on_break %}<span class="badge bg-info">En pause</span>
-                    {% elif te.arrival_time %}<span class="badge bg-success">Présent</span>{% endif %}
-                  {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
-                </td>
-                <td>
-                  {% if te.arrival_bureau %}{{ te.arrival_bureau.name }}
-                  {% else %}—{% endif %}
-                </td>
-                <td>{{ e.bureau.name }}</td>
-              {% endwith %}
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% if employees|length > 10 %}
-        <small class="text-muted">+ {{ employees|length|add:"-10" }} autre(s) employé(s) — <a href="{% url 'reporting:chef_agence_equipe' %}">voir tout</a></small>
-      {% endif %}
+      <div class="scroll-wrap" style="max-height: 520px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <table class="table modern-table align-middle mb-0" style="position: relative;">
+          <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 2; box-shadow: 0 1px 0 #e5e7eb;">
+            <tr><th>Employé</th><th>Statut</th><th>Bureau de connexion</th><th>Affectation</th></tr>
+          </thead>
+          <tbody>
+            {% for e in employees %}
+              <tr>
+                <td><span class="avatar">{{ e.initials }}</span> {{ e.user.get_full_name|default:e.user.matricule }}</td>
+                {% with te=today_entries_by_employee|get_item:e.pk %}
+                  <td>
+                    {% if te %}
+                      {% if te.departure_time %}<span class="badge bg-secondary">Parti</span>
+                      {% elif te.is_on_break %}<span class="badge bg-info">En pause</span>
+                      {% elif te.arrival_time %}<span class="badge bg-success">Présent</span>{% endif %}
+                    {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
+                  </td>
+                  <td>
+                    {% if te.arrival_bureau %}{{ te.arrival_bureau.name }}
+                    {% else %}—{% endif %}
+                  </td>
+                  <td>{{ e.bureau.name }}</td>
+                {% endwith %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <small class="text-muted d-block mt-2">
+        <i class="bi bi-info-circle"></i> {{ employees|length }} employé{{ employees|length|pluralize }} affiché{{ employees|length|pluralize }} — faites défiler le tableau pour voir toute la liste.
+      </small>
     </div>
   </div>
 
