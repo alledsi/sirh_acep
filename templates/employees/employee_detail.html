@@ -51,11 +51,18 @@
       </div>
 
       <div class="mt-3 d-grid gap-2">
-        <a href="{% url 'employees:employee_update' employee.pk %}" class="btn-acep" style="padding:6px 14px;"><i class="bi bi-pencil"></i> Modifier</a>
-        {% if employee.is_active %}
-          <a href="{% url 'employees:employee_delete' employee.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-person-x"></i> Désactiver</a>
+        {% if user_has_global_access %}
+          <a href="{% url 'employees:employee_update' employee.pk %}" class="btn-acep" style="padding:6px 14px;"><i class="bi bi-pencil"></i> Modifier</a>
+          <a href="{% url 'employees:employee_password_reset' employee.pk %}" class="btn btn-sm btn-outline-warning"><i class="bi bi-key"></i> Réinitialiser le mot de passe</a>
+          {% if employee.is_active %}
+            <a href="{% url 'employees:employee_delete' employee.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-person-x"></i> Désactiver</a>
+          {% else %}
+            <span class="badge bg-secondary">Employé inactif</span>
+          {% endif %}
         {% else %}
-          <span class="badge bg-secondary">Employé inactif</span>
+          {% if not employee.is_active %}
+            <span class="badge bg-secondary">Employé inactif</span>
+          {% endif %}
         {% endif %}
       </div>
     </div>

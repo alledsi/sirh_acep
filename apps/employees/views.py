@@ -190,6 +190,79 @@ class EmployeeUpdateView(GlobalAccessRequiredMixin, FormView):
         return redirect('employees:employee_detail', pk=employee.pk)
 
 
+# ============ Réinitialisation mot de passe (RH/DG) ============
+
+class EmployeePasswordResetView(GlobalAccessRequiredMixin, View):
+    """Permet à la RH de réinitialiser le mot de passe d'un employé
+    sans connaître l'ancien (comme l'admin Django).
+
+    Deux modes :
+      - saisir un nouveau mot de passe personnalisé
+      - réinitialiser au mot de passe par défaut Acep@2026
+    """
+    template_name = 'employees/employee_password_reset.html'
+    DEFAULT_PASSWORD = 'Acep@2026'
+
+    def get_employee(self):
+        return get_object_or_404(Employee, pk=self.kwargs['pk'])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {
+            'employee': self.get_employee(),
+            'default_password': self.DEFAULT_PASSWORD,
+        })
+
+    def post(self, request, *args, **kwargs):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        employee = self.get_employee()
+        mode = request.POST.get('mode', 'custom')
+
+        if mode == 'default':
+            new_password = self.DEFAULT_PASSWORD
+            force_change = True
+        else:
+            new_password = (request.POST.get('new_password') or '').strip()
+            confirm = (request.POST.get('confirm') or '').strip()
+            if not new_password or len(new_password) < 8:
+                messages.error(request, "Le mot de passe doit faire au moins 8 caractères.")
+                return render(request, self.template_name, {
+                    'employee': employee, 'default_password': self.DEFAULT_PASSWORD,
+                })
+            if new_password != confirm:
+                messages.error(request, "La confirmation ne correspond pas au nouveau mot de passe.")
+                return render(request, self.template_name, {
+                    'employee': employee, 'default_password': self.DEFAULT_PASSWORD,
+                })
+            try:
+                validate_password(new_password, user=employee.user)
+            except DjangoValidationError as e:
+                for msg in e.messages:
+                    messages.error(request, msg)
+                return render(request, self.template_name, {
+                    'employee': employee, 'default_password': self.DEFAULT_PASSWORD,
+                })
+            force_change = bool(request.POST.get('force_change'))
+
+        employee.user.set_password(new_password)
+        employee.user.must_change_password = force_change
+        employee.user.save(update_fields=['password', 'must_change_password'])
+
+        if mode == 'default':
+            messages.success(
+                request,
+                f"Mot de passe de {employee.user.matricule} réinitialisé au mot de passe par défaut "
+                f"({self.DEFAULT_PASSWORD}). L'employé devra le changer à sa prochaine connexion."
+            )
+        else:
+            msg = f"Mot de passe de {employee.user.matricule} mis à jour."
+            if force_change:
+                msg += " L'employé devra le changer à sa prochaine connexion."
+            messages.success(request, msg)
+        return redirect('employees:employee_detail', pk=employee.pk)
+
+
 # ============ Suppression ============
 
 class EmployeeDeleteView(GlobalAccessRequiredMixin, DeleteView):

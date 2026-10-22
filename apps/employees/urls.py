@@ -13,6 +13,7 @@ urlpatterns = [
     path('import/modele/', views.EmployeeImportTemplateView.as_view(), name='employee_import_template'),
     path('<int:pk>/', views.EmployeeDetailView.as_view(), name='employee_detail'),
     path('<int:pk>/modifier/', views.EmployeeUpdateView.as_view(), name='employee_update'),
+    path('<int:pk>/reinitialiser-mdp/', views.EmployeePasswordResetView.as_view(), name='employee_password_reset'),
     path('<int:pk>/desactiver/', views.EmployeeDeleteView.as_view(), name='employee_delete'),
 
     # Mon profil (vue agent)
