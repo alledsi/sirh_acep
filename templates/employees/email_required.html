@@ -1,0 +1,115 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email obligatoire — ACEP Pointage</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2302564A'%3E%3Cpath d='M6.75 1a.75.75 0 0 1 .75.75V8a.5.5 0 0 0 1 0V5.467l.086-.004c.317-.012.637-.008.816.027.134.027.294.096.448.182.077.042.15.147.15.314V8a.5.5 0 1 0 1 0V6.435l.106-.01c.316-.024.584-.01.708.04.118.046.3.207.486.43.081.096.15.19.2.259V8.5a.5.5 0 0 0 1 0v-1h.342a1 1 0 0 1 .995 1.1l-.271 2.715a2.5 2.5 0 0 1-.317.991l-1.395 2.442a.5.5 0 0 1-.434.252H6.118a.5.5 0 0 1-.447-.276l-1.232-2.465-2.512-4.185a.517.517 0 0 1 .809-.631l2.41 2.41A.5.5 0 0 0 6 9.5V1.75A.75.75 0 0 1 6.75 1M8.5 4.466V1.75a1.75 1.75 0 1 0-3.5 0v6.543L3.443 6.736A1.517 1.517 0 0 0 1.07 8.588l2.491 4.153 1.215 2.43A1.5 1.5 0 0 0 6.118 16h6.302a1.5 1.5 0 0 0 1.302-.756l1.395-2.441a3.5 3.5 0 0 0 .444-1.389l.271-2.715a2 2 0 0 0-1.99-2.199h-.581a5 5 0 0 0-.195-.248c-.191-.229-.51-.568-.88-.716-.364-.146-.846-.132-1.158-.108l-.132.012a1.26 1.26 0 0 0-.56-.642 2.6 2.6 0 0 0-.738-.288c-.31-.062-.739-.058-1.05-.046q-.126.006-.226.012z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    :root { --acep-green:#02564A; --acep-green-dark:#013D34; --acep-green-light:#D6E6E3; }
+    body {
+      min-height: 100vh; margin: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--acep-green-light), #f4f7f6);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+    }
+    .email-card {
+      background: white; border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+      max-width: 520px; width: 100%; padding: 40px;
+    }
+    .brand { color: var(--acep-green); display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+    .brand i { font-size: 2rem; }
+    .brand .name { font-size: 1.3rem; font-weight: 800; letter-spacing: 1px; }
+    h3 { color: var(--acep-green-dark); margin-bottom: 8px; font-weight: 700; }
+    .subtitle { color: #6c757d; margin-bottom: 24px; }
+    .form-control { padding: 12px 16px; border-radius: 10px; border: 1.5px solid #e0e0e0; }
+    .form-control:focus { border-color: var(--acep-green); box-shadow: 0 0 0 0.2rem rgba(2,86,74,0.15); }
+    .btn-acep {
+      background: var(--acep-green); color: white; width: 100%;
+      padding: 14px; border-radius: 10px; border: none; font-weight: 600;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .btn-acep:hover { background: var(--acep-green-dark); color: white; transform: translateY(-1px); }
+    .info-box {
+      background: var(--acep-green-light); border-left: 4px solid var(--acep-green);
+      padding: 12px 16px; border-radius: 8px; font-size: 0.92rem; color: var(--acep-green-dark);
+    }
+    .mat-info {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: #f8f9fa; border-radius: 10px;
+      margin-bottom: 20px; font-size: 0.92rem;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--acep-green); color: white;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 600;
+    }
+    .logout-link {
+      display: block; text-align: center; margin-top: 20px;
+      color: #adb5bd; font-size: 0.85rem; text-decoration: none;
+    }
+    .logout-link:hover { color: #6c757d; }
+  </style>
+</head>
+<body>
+
+<div class="email-card">
+  <div class="brand">
+    <i class="bi bi-hand-index-thumb-fill"></i>
+    <div class="name">POINTAGE ACEP</div>
+  </div>
+
+  <h3><i class="bi bi-envelope-plus"></i> Email obligatoire</h3>
+  <p class="subtitle">Votre adresse email n'est pas encore enregistrée dans le système.
+    Vous devez la saisir pour continuer à utiliser l'application.</p>
+
+  <div class="mat-info">
+    <span class="avatar">{{ user.first_name|first|default:'?' }}{{ user.last_name|first|default:'' }}</span>
+    <div>
+      <div><strong>{{ user.get_full_name|default:user.matricule }}</strong></div>
+      <small class="text-muted">Matricule {{ user.matricule }}</small>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-sm" style="padding:10px 14px; font-size:0.9rem;">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <label for="email" class="form-label fw-semibold">Votre adresse email <span class="text-danger">*</span></label>
+    <input type="email" name="email" id="email" class="form-control mb-3"
+           placeholder="prenom.nom@acep.sn" required autofocus
+           value="{{ user.email|default:'' }}">
+    <button type="submit" class="btn-acep">
+      <i class="bi bi-check-circle"></i> Enregistrer mon email
+    </button>
+  </form>
+
+  <div class="info-box mt-3">
+    <i class="bi bi-info-circle"></i>
+    Votre email servira aux communications RH (bulletins, notifications,
+    récupération de mot de passe). Vous pourrez le modifier plus tard
+    depuis votre profil.
+  </div>
+
+  <form method="post" action="{% url 'core:logout' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="logout-link" style="background:none; border:none; width:100%;">
+      <i class="bi bi-power"></i> Se déconnecter
+    </button>
+  </form>
+</div>
+
+</body>
+</html>

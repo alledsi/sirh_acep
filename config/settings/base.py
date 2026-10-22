@@ -49,6 +49,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Force la saisie d'email pour tout utilisateur connecté sans email
+    'apps.core.middleware.RequireEmailMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

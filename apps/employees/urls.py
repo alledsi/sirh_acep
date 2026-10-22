@@ -18,6 +18,7 @@ urlpatterns = [
 
     # Mon profil (vue agent)
     path('mon-profil/', views.MyProfileView.as_view(), name='my_profile'),
+    path('mon-profil/email-requis/', views.EmailRequiredView.as_view(), name='email_required'),
     path('mon-profil/email/', views.MyEmailUpdateView.as_view(), name='my_email_update'),
     path('mon-profil/telephone/', views.MyPhoneUpdateView.as_view(), name='my_phone_update'),
 ]

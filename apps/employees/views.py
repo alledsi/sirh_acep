@@ -363,6 +363,41 @@ class MyEmailUpdateView(LoginRequiredMixin, View):
         return redirect('employees:my_profile')
 
 
+class EmailRequiredView(LoginRequiredMixin, View):
+    """Page bloquante tant que l'utilisateur n'a pas enregistré son email.
+
+    Appelée par le middleware RequireEmailMiddleware pour tout user connecté
+    sans email. Aucune autre page de l'app ne lui est accessible tant qu'il
+    n'a pas rempli ce formulaire.
+    """
+    template_name = 'employees/email_required.html'
+
+    def get(self, request):
+        # Si l'email existe déjà, on redirige vers l'accueil
+        if (request.user.email or '').strip():
+            return redirect('core:home')
+        return render(request, self.template_name)
+
+    def post(self, request):
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        email = (request.POST.get('email') or '').strip()
+        if not email:
+            messages.error(request, "L'email est obligatoire.")
+            return render(request, self.template_name)
+        try:
+            validate_email(email)
+        except DjangoValidationError:
+            messages.error(request, "Adresse email invalide. Format attendu : prenom.nom@acep.sn")
+            return render(request, self.template_name)
+
+        request.user.email = email
+        request.user.save(update_fields=['email'])
+        messages.success(request, f"Email {email} enregistré. Merci !")
+        return redirect('core:home')
+
+
 class MyPhoneUpdateView(LoginRequiredMixin, View):
     """Permet à l'utilisateur connecté de modifier UNIQUEMENT son téléphone."""
 
