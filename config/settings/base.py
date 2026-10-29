@@ -84,6 +84,13 @@ DATABASES = {
 # ---------- Authentification ----------
 AUTH_USER_MODEL = 'core.User'
 
+# ---------- Sessions / Déconnexion automatique ----------
+# L'utilisateur est déconnecté après 2h d'inactivité.
+# Chaque requête repousse l'expiration (sliding expiration).
+SESSION_COOKIE_AGE = 2 * 60 * 60                    # 2 heures en secondes
+SESSION_SAVE_EVERY_REQUEST = True                   # reset du timer à chaque action
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True              # ferme aussi la session à la fermeture du navigateur
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {
