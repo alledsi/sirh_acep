@@ -19,6 +19,7 @@ urlpatterns = [
     # RH/DG
     path('statistiques/', views.RHStatsView.as_view(), name='rh_stats'),
     path('anomalies/', views.AnomalyListView.as_view(), name='anomaly_list'),
+    path('anomalies/export/', views.AnomalyExportView.as_view(), name='anomaly_export'),
     path('suivi-quotidien/', views.DailyTrackingView.as_view(), name='daily_tracking'),
     path('cumul-mensuel/', views.MonthlyHoursView.as_view(), name='monthly_hours'),
     path('export/', views.ExportStatsView.as_view(), name='export_stats'),

@@ -1,4 +1,23 @@
-"""Context processors : expose les rôles dans tous les templates."""
+"""Context processors : expose les rôles et le message diffusé dans tous les templates."""
+
+
+def broadcast_message(request):
+    """Expose le message diffusé courant si non vu dans cette session."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return {'broadcast_message': None}
+    try:
+        from .models import BroadcastMessage
+        msg = BroadcastMessage.get_active()
+    except Exception:
+        return {'broadcast_message': None}
+    if not msg:
+        return {'broadcast_message': None}
+    # Vérifier si déjà vu dans cette session
+    seen_ids = request.session.get('seen_broadcast_ids', [])
+    if msg.pk in seen_ids:
+        return {'broadcast_message': None}
+    return {'broadcast_message': msg}
 
 
 def user_roles(request):

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Supprimer message{% endblock %}
+{% block page_title %}Supprimer le message{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card-section text-center">
+      <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+      <h4 class="mt-3">Confirmer la suppression</h4>
+      <p>Vous êtes sur le point de supprimer le message :</p>
+      <p><strong>{{ object.title }}</strong></p>
+      {% if object.is_active %}
+        <div class="alert alert-warning"><i class="bi bi-broadcast"></i> Ce message est actuellement diffusé — il sera retiré de l'affichage pour tous les utilisateurs.</div>
+      {% endif %}
+      <p class="text-muted">Cette action est irréversible.</p>
+
+      <form method="post" class="mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger" style="padding:8px 18px;"><i class="bi bi-trash"></i> Supprimer</button>
+        <a href="{% url 'core:broadcast_list' %}" class="btn btn-outline-secondary">Annuler</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

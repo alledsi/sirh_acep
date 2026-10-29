@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} message{% endblock %}
+{% block page_title %}{% if object %}Modifier le message{% else %}Nouveau message à diffuser{% endif %}{% endblock %}
+
+{% block content %}
+<a href="{% url 'core:broadcast_list' %}" class="btn btn-outline-secondary btn-sm mb-3">
+  <i class="bi bi-arrow-left"></i> Retour à la liste
+</a>
+
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card-section">
+      <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="row g-3">
+          <div class="col-md-9">
+            <label class="form-label">Titre <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control" required maxlength="200"
+                   value="{{ form.title.value|default:'' }}"
+                   placeholder="Ex : Fermeture exceptionnelle vendredi 25/10">
+            {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Niveau</label>
+            <select name="level" class="form-select">
+              {% for code, label in form.fields.level.choices %}
+                <option value="{{ code }}" {% if form.level.value == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Message <span class="text-danger">*</span></label>
+            <textarea name="body" class="form-control" rows="8" required
+                      placeholder="Rédigez le message qui sera affiché à tous les collaborateurs...">{{ form.body.value|default:'' }}</textarea>
+            {% if form.body.errors %}<div class="text-danger small">{{ form.body.errors }}</div>{% endif %}
+            <small class="text-muted">Les sauts de ligne sont préservés.</small>
+          </div>
+
+          <div class="col-12">
+            <div class="alert alert-light border" style="border-left: 4px solid var(--acep-green) !important;">
+              <div class="form-check">
+                <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
+                       {% if form.is_active.value %}checked{% endif %}>
+                <label for="is_active" class="form-check-label">
+                  <strong><i class="bi bi-broadcast"></i> Diffuser immédiatement à tous les utilisateurs</strong>
+                </label>
+              </div>
+              <small class="text-muted d-block mt-1">
+                <i class="bi bi-info-circle"></i>
+                Si coché, tout autre message en diffusion sera automatiquement arrêté
+                (un seul message à la fois). Vous pouvez aussi activer ce message plus tard
+                depuis la liste.
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn-acep" style="width:auto; padding:8px 18px;">
+            <i class="bi bi-check-circle"></i> Enregistrer
+          </button>
+          <a href="{% url 'core:broadcast_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Aperçu temps réel -->
+    <div class="card-section" style="background:#f8f9fa;">
+      <h6 class="text-muted mb-3"><i class="bi bi-eye"></i> Aperçu — ainsi que les utilisateurs verront le message</h6>
+      <div class="broadcast-preview p-3 rounded" style="background:white; border:1px solid #e5e7eb;">
+        <h5 id="preview_title" style="color: var(--acep-green-dark);"><i class="bi bi-megaphone-fill"></i> <span>Titre…</span></h5>
+        <p id="preview_body" class="mb-0" style="white-space: pre-wrap;">Message…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const titleInput = document.querySelector('input[name="title"]');
+    const bodyInput = document.querySelector('textarea[name="body"]');
+    const previewTitle = document.querySelector('#preview_title span');
+    const previewBody = document.getElementById('preview_body');
+    function update() {
+      previewTitle.textContent = titleInput.value || 'Titre…';
+      previewBody.textContent = bodyInput.value || 'Message…';
+    }
+    titleInput.addEventListener('input', update);
+    bodyInput.addEventListener('input', update);
+    update();
+  })();
+</script>
+{% endblock %}

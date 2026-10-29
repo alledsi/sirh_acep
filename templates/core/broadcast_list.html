@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Messages diffusés{% endblock %}
+{% block page_title %}Messages diffusés au personnel{% endblock %}
+
+{% block content %}
+<div class="card-section">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+      <h5 class="mb-1"><i class="bi bi-megaphone"></i> Messages diffusés ({{ paginator.count }})</h5>
+      <small class="text-muted">
+        <i class="bi bi-info-circle"></i>
+        Un seul message peut être diffusé à la fois. Chaque utilisateur voit le message une fois par session.
+      </small>
+    </div>
+    <a href="{% url 'core:broadcast_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+      <i class="bi bi-plus-lg"></i> Nouveau message
+    </a>
+  </div>
+
+  {% if messages_list %}
+  <div class="table-responsive">
+    <table class="table modern-table align-middle">
+      <thead>
+        <tr>
+          <th>Titre</th>
+          <th>Niveau</th>
+          <th>Aperçu</th>
+          <th>Créé le</th>
+          <th>Par</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in messages_list %}
+          <tr {% if m.is_active %}style="background: var(--acep-green-light);"{% endif %}>
+            <td>
+              <strong>{{ m.title }}</strong>
+              {% if m.is_active %}
+                <br><small class="text-success"><i class="bi bi-broadcast"></i> En diffusion depuis le {{ m.activated_at|date:'d/m/Y H:i' }}</small>
+              {% endif %}
+            </td>
+            <td>
+              {% if m.level == 'URGENT' %}<span class="badge bg-danger">Urgent</span>
+              {% elif m.level == 'IMPORTANT' %}<span class="badge bg-warning text-dark">Important</span>
+              {% else %}<span class="badge bg-info">Info</span>{% endif %}
+            </td>
+            <td><small class="text-muted">{{ m.body|truncatechars:100 }}</small></td>
+            <td><small>{{ m.created_at|date:'d/m/Y H:i' }}</small></td>
+            <td><small>{{ m.created_by.get_full_name|default:m.created_by.matricule|default:'—' }}</small></td>
+            <td>
+              {% if m.is_active %}
+                <span class="badge bg-success"><i class="bi bi-broadcast"></i> Diffusé</span>
+              {% else %}
+                <span class="badge bg-secondary">Brouillon</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{% url 'core:broadcast_toggle' m.pk %}" class="d-inline">
+                {% csrf_token %}
+                {% if m.is_active %}
+                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="Arrêter la diffusion"
+                          onclick="return confirm('Arrêter la diffusion de ce message ?');">
+                    <i class="bi bi-stop-circle"></i>
+                  </button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-outline-success" title="Diffuser à tous (désactive les autres messages)"
+                          onclick="return confirm('Diffuser ce message à tous les utilisateurs ? Les autres messages seront arrêtés automatiquement.');">
+                    <i class="bi bi-broadcast"></i>
+                  </button>
+                {% endif %}
+              </form>
+              <a href="{% url 'core:broadcast_update' m.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'core:broadcast_delete' m.pk %}" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="alert alert-light border text-center">
+      <i class="bi bi-megaphone" style="font-size: 2rem; color: var(--acep-green);"></i>
+      <p class="mb-2 mt-2">Aucun message pour le moment.</p>
+      <a href="{% url 'core:broadcast_create' %}" class="btn-acep" style="width:auto; padding:6px 14px;">
+        <i class="bi bi-plus-lg"></i> Créer le premier message
+      </a>
+    </div>
+  {% endif %}
+
+  {% include '_pagination.html' %}
+</div>
+{% endblock %}

@@ -313,6 +313,80 @@ class RHStatsView(GlobalAccessRequiredMixin, View):
         })
 
 
+class AnomalyExportView(GlobalAccessRequiredMixin, View):
+    """Export Excel des anomalies — respecte le filtre statut en cours."""
+
+    def get(self, request):
+        import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from django.http import HttpResponse
+
+        only_pending = request.GET.get('statut', 'pending') == 'pending'
+        qs = get_anomalies_for_user(request.user, only_pending=only_pending)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Anomalies'
+
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='02564A', end_color='02564A', fill_type='solid')
+        title_font = Font(bold=True, size=14, color='02564A')
+        red_fill = PatternFill(start_color='FDECEC', end_color='FDECEC', fill_type='solid')
+
+        label = "en attente" if only_pending else "toutes"
+        ws['A1'] = f"ACEP — Anomalies ({label}) — {qs.count()} enregistrement(s)"
+        ws['A1'].font = title_font
+        ws.merge_cells('A1:K1')
+        ws['A1'].alignment = Alignment(horizontal='center')
+
+        headers = ['Date pointage', 'Matricule', 'Nom complet', 'Direction', 'Bureau',
+                   'Type anomalie', 'Sévérité', 'Description',
+                   'Statut', 'Validée par', 'Note validation']
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=3, column=col, value=h)
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = Alignment(horizontal='center')
+
+        severity_label = {1: 'Info', 2: 'Avertissement', 3: 'Critique'}
+
+        row_num = 4
+        for a in qs:
+            te = a.time_entry
+            emp = te.employee
+            is_crit = a.severity == 3
+            values = [
+                te.work_date.strftime('%d/%m/%Y'),
+                emp.user.matricule,
+                emp.user.get_full_name() or emp.user.matricule,
+                emp.direction.name if emp.direction else '',
+                emp.bureau.name if emp.bureau else '',
+                a.get_anomaly_type_display(),
+                severity_label.get(a.severity, ''),
+                a.description or '',
+                'Validée' if a.is_acknowledged else 'En attente',
+                (a.acknowledged_by.get_full_name() or a.acknowledged_by.matricule) if a.acknowledged_by else '',
+                a.acknowledgement_note or '',
+            ]
+            for col, v in enumerate(values, 1):
+                c = ws.cell(row=row_num, column=col, value=v)
+                if is_crit:
+                    c.fill = red_fill
+            row_num += 1
+
+        widths = [14, 12, 30, 25, 25, 28, 14, 45, 14, 22, 30]
+        for col, w in enumerate(widths, 1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        stamp = timezone.localtime().strftime('%Y%m%d_%H%M')
+        response['Content-Disposition'] = f'attachment; filename="anomalies_acep_{stamp}.xlsx"'
+        wb.save(response)
+        return response
+
+
 class AnomalyListView(GlobalAccessRequiredMixin, View):
     """Liste des anomalies pour la RH/DG (toutes les anomalies)."""
     template_name = 'reporting/anomaly_list.html'

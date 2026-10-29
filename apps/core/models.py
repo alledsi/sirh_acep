@@ -115,6 +115,64 @@ class User(AbstractUser):
         return self.is_rh or self.is_dg
 
 
+class BroadcastMessage(models.Model):
+    """Message diffusé à tous les utilisateurs connectés (RH → personnel).
+
+    Un seul message peut être actif à la fois (contrainte applicative).
+    Quand un message est activé, les précédents sont automatiquement désactivés.
+    Chaque utilisateur voit le message une fois par session (dismissable).
+    """
+    LEVEL_INFO = 'INFO'
+    LEVEL_IMPORTANT = 'IMPORTANT'
+    LEVEL_URGENT = 'URGENT'
+    LEVEL_CHOICES = [
+        (LEVEL_INFO, 'Information'),
+        (LEVEL_IMPORTANT, 'Important'),
+        (LEVEL_URGENT, 'Urgent'),
+    ]
+
+    title = models.CharField('Titre', max_length=200)
+    body = models.TextField('Message', help_text='Texte du message. Les sauts de ligne sont préservés.')
+    level = models.CharField('Niveau', max_length=20, choices=LEVEL_CHOICES, default=LEVEL_INFO)
+    is_active = models.BooleanField(
+        'Diffusé',
+        default=False,
+        help_text="Si coché, ce message s'affiche à tous les utilisateurs à la connexion. Les autres messages sont automatiquement désactivés.",
+    )
+    created_by = models.ForeignKey(
+        'core.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='broadcast_messages', verbose_name='Créé par',
+    )
+    created_at = models.DateTimeField('Créé le', auto_now_add=True)
+    updated_at = models.DateTimeField('Modifié le', auto_now=True)
+    activated_at = models.DateTimeField('Diffusé le', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Message diffusé'
+        verbose_name_plural = 'Messages diffusés'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        """Si on active ce message, désactiver tous les autres."""
+        from django.utils import timezone as tz
+        if self.is_active:
+            # Désactiver les autres
+            BroadcastMessage.objects.exclude(pk=self.pk).filter(is_active=True).update(
+                is_active=False
+            )
+            if not self.activated_at:
+                self.activated_at = tz.now()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_active(cls):
+        """Retourne le message actuellement diffusé, ou None."""
+        return cls.objects.filter(is_active=True).first()
+
+
 class BaseModel(models.Model):
     """Modèle abstrait avec horodatage et soft delete.
 
