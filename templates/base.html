@@ -240,11 +240,6 @@
         </div>
         <div class="modal-body" style="padding: 28px; font-size: 1.02rem; line-height: 1.55;">
           <div style="white-space: pre-wrap; color: #212121;">{{ broadcast_message.body }}</div>
-          <small class="text-muted d-block mt-4">
-            <i class="bi bi-calendar-event"></i>
-            {% if broadcast_message.activated_at %}Diffusé le {{ broadcast_message.activated_at|date:'d/m/Y à H:i' }}{% else %}{{ broadcast_message.created_at|date:'d/m/Y' }}{% endif %}
-            {% if broadcast_message.created_by %}— par {{ broadcast_message.created_by.get_full_name|default:broadcast_message.created_by.matricule }}{% endif %}
-          </small>
         </div>
         <div class="modal-footer" style="border: none; padding: 16px 28px 24px;">
           <button type="button" class="btn-acep" id="broadcastAckBtn" style="width:auto; padding:10px 24px; font-size: 0.95rem;">
