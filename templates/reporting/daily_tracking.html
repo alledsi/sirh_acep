@@ -17,6 +17,15 @@
       <div class="icon" style="background: #f8d7da; color: #842029;"><i class="bi bi-x-circle"></i></div>
       <p class="label">{% if period == 'jour' %}Absents{% else %}Sans pointage{% endif %}</p>
       <p class="value">{{ absent_count }}</p>
+      {% if period == 'jour' and not day_expected %}
+        <p class="trend text-muted small">
+          <i class="bi bi-info-circle"></i>
+          {% if day_mode == 'OPTIONAL' %}Jour optionnel (pointage libre)
+          {% elif day_mode == 'HOLIDAY' %}Jour férié
+          {% else %}Jour non travaillé{% endif %}
+          — aucune absence comptée.
+        </p>
+      {% endif %}
     </div>
   </div>
   <div class="col-md-4">
@@ -157,7 +166,7 @@
       <tbody>
         {% for row in rows %}
           {% if period == 'jour' %}
-          <tr {% if row.status == 'absent' %}style="background:#fff5f5;"{% endif %}>
+          <tr {% if row.status == 'absent' %}style="background:#fff5f5;"{% elif row.status == 'not_expected' %}style="background:#fafafa; opacity:0.75;"{% endif %}>
             <td><code>{{ row.employee.user.matricule }}</code></td>
             <td>{{ row.employee.user.get_full_name|default:row.employee.user.matricule }}</td>
             <td>{{ row.employee.position|default:'—' }}</td>
@@ -171,7 +180,8 @@
               {% if row.status == 'present' %}<span class="badge bg-success">Présent</span>
               {% elif row.status == 'on_break' %}<span class="badge bg-info">En pause</span>
               {% elif row.status == 'departed' %}<span class="badge bg-secondary">Parti</span>
-              {% else %}<span class="badge bg-danger">Absent</span>{% endif %}
+              {% elif row.status == 'absent' %}<span class="badge bg-danger">Absent</span>
+              {% else %}<span class="badge bg-light text-muted" title="Jour non obligatoire">—</span>{% endif %}
             </td>
           </tr>
           {% else %}

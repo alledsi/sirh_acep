@@ -86,6 +86,27 @@ def get_chef_agence_agences(user):
     return Agence.objects.filter(pk=employee.bureau.agence_id)
 
 
+def is_day_expected(target_date):
+    """Retourne True si target_date est un jour où le pointage est attendu
+    (jour MANDATORY, ni samedi optionnel, ni dimanche, ni férié).
+
+    Utilisé pour éviter de marquer des employés "Absent" un jour non obligatoire.
+    """
+    try:
+        from apps.planning.services import get_daily_schedule
+        from apps.planning.models import DailySchedule, Holiday
+    except Exception:
+        return True
+    if Holiday.is_holiday(target_date):
+        return False
+    daily = get_daily_schedule(target_date)
+    if not daily:
+        return False
+    if daily.mode in (DailySchedule.MODE_NOT_WORKED, DailySchedule.MODE_OPTIONAL):
+        return False
+    return True
+
+
 def get_chef_agence_employees(user):
     """Retourne les Employees des bureaux de l'agence du Chef d'agence."""
     agences = get_chef_agence_agences(user)
@@ -124,7 +145,9 @@ def compute_today_status(employees_qs):
             present += 1
 
     total = len(employee_ids)
-    absent = total - len(arrived_ids)
+    # Jour non obligatoire (samedi, dimanche, férié) → aucun absent compté
+    day_expected = is_day_expected(today)
+    absent = (total - len(arrived_ids)) if day_expected else 0
     rate = round(100 * len(arrived_ids) / total, 1) if total else 0
 
     return {
@@ -136,6 +159,7 @@ def compute_today_status(employees_qs):
         'attendance_rate': rate,
         'today_entries': today_entries,
         'arrived_ids': arrived_ids,
+        'day_expected': day_expected,
     }
 
 

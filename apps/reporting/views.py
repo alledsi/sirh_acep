@@ -497,6 +497,36 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
         absent_count = 0
         total_minutes_all = 0
 
+        # Détermine si la date cible est un jour attendu (obligatoire).
+        # - Dimanche / jour NOT_WORKED → pas attendu
+        # - Samedi / jour OPTIONAL (pointage libre) → pas attendu
+        # - Jour férié → pas attendu
+        # Seuls les jours MANDATORY comptent comme "attendus" pour marquer un absent.
+        try:
+            from apps.planning.services import get_daily_schedule
+            from apps.planning.models import DailySchedule, Holiday
+            daily = get_daily_schedule(start) if period == 'jour' else None
+            is_holiday = Holiday.is_holiday(start) if period == 'jour' else False
+            if period == 'jour':
+                if is_holiday:
+                    day_expected = False
+                    day_mode = 'HOLIDAY'
+                elif not daily or daily.mode == DailySchedule.MODE_NOT_WORKED:
+                    day_expected = False
+                    day_mode = 'NOT_WORKED'
+                elif daily.mode == DailySchedule.MODE_OPTIONAL:
+                    day_expected = False
+                    day_mode = 'OPTIONAL'
+                else:
+                    day_expected = True
+                    day_mode = 'MANDATORY'
+            else:
+                day_expected = True
+                day_mode = 'MANDATORY'
+        except Exception:
+            day_expected = True
+            day_mode = 'MANDATORY'
+
         if period == 'jour':
             # Mode jour : ligne par employé, statut + IPs de la journée
             entries_by_emp = {e.employee_id: e for e in entries_qs}
@@ -505,14 +535,17 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
                 if entry and entry.arrival_time:
                     status = 'departed' if entry.departure_time else ('on_break' if entry.is_on_break else 'present')
                     present_count += 1
-                else:
+                elif day_expected:
                     status = 'absent'
                     absent_count += 1
+                else:
+                    # Jour non obligatoire (samedi, dimanche, férié) : ni absent ni présent
+                    status = 'not_expected'
                 rows.append({'employee': emp, 'entry': entry, 'status': status})
 
             sort_by = request.GET.get('sort', 'status')
             if sort_by == 'arrival':
-                # Tri par heure d'arrivée croissante ; les absents en fin de liste.
+                # Tri par heure d'arrivée croissante ; sans arrivée en fin de liste.
                 far_future = datetime.max.replace(tzinfo=timezone.get_current_timezone())
                 rows.sort(key=lambda r: (
                     r['entry'].arrival_time if r['entry'] and r['entry'].arrival_time else far_future,
@@ -523,22 +556,31 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
                     (r['employee'].user.get_full_name() or r['employee'].user.matricule).lower()
                 ))
             else:  # 'status' par défaut
-                order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3}
-                rows.sort(key=lambda r: (order[r['status']], r['employee'].user.matricule))
+                order = {'present': 0, 'on_break': 1, 'departed': 2, 'absent': 3, 'not_expected': 4}
+                rows.sort(key=lambda r: (order.get(r['status'], 5), r['employee'].user.matricule))
         else:
-            # Mode agrégé : compte les jours présents/absents sur la période
+            # Mode agrégé : compte les jours présents/absents sur la période.
+            # Un jour n'est "attendu" que s'il est MANDATORY (ni samedi optionnel,
+            # ni dimanche, ni jour férié).
+            from apps.reporting.services import is_day_expected
             entries_by_emp_map = {}
             for e in entries_qs:
                 entries_by_emp_map.setdefault(e.employee_id, []).append(e)
 
-            # Calcul du nombre de jours ouvrés dans la période (Lun-Sam par défaut)
+            # Nombre de jours réellement attendus (obligatoires) sur la période.
             total_workable_days = sum(
                 1 for i in range((end - start).days + 1)
-                if (start + timedelta(days=i)).weekday() < 6  # exclut dimanche
+                if is_day_expected(start + timedelta(days=i))
             )
 
             for emp in employees:
                 emp_entries = entries_by_emp_map.get(emp.pk, [])
+                # On ne compte dans "jours présents" que les pointages sur jour attendu
+                days_present_expected = sum(
+                    1 for e in emp_entries
+                    if e.arrival_time and is_day_expected(e.work_date)
+                )
+                # Pour l'affichage, on garde le nombre total de jours pointés (y compris samedi)
                 days_present = sum(1 for e in emp_entries if e.arrival_time)
                 total = timedelta()
                 arrival_ips = set()
@@ -554,7 +596,8 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
                 minutes = int(total.total_seconds() // 60)
                 total_minutes_all += minutes
                 h, m = divmod(minutes, 60)
-                days_absent = max(0, total_workable_days - days_present)
+                # Absents = jours attendus où l'employé n'a PAS pointé
+                days_absent = max(0, total_workable_days - days_present_expected)
                 if days_present:
                     present_count += 1
                 else:
@@ -607,6 +650,8 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
             ],
             'period_choices': self.PERIOD_CHOICES,
             'current_sort': request.GET.get('sort', 'status'),
+            'day_mode': day_mode,
+            'day_expected': day_expected,
         })
 
 
@@ -731,16 +776,21 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
                 entries_map.setdefault(e.employee_id, []).append(e)
 
             # Nb jours travaillables sur la période (exclut dimanches)
+            from apps.reporting.services import is_day_expected as _is_day_expected
             total_workable = sum(
                 1 for i in range((end - start).days + 1)
-                if (start + timedelta(days=i)).weekday() < 6
+                if _is_day_expected(start + timedelta(days=i))
             )
 
             row_num = 4
             for emp in employees:
                 emp_entries = entries_map.get(emp.pk, [])
                 days_present = sum(1 for e in emp_entries if e.arrival_time)
-                days_absent = max(0, total_workable - days_present)
+                days_present_expected = sum(
+                    1 for e in emp_entries
+                    if e.arrival_time and _is_day_expected(e.work_date)
+                )
+                days_absent = max(0, total_workable - days_present_expected)
                 total = timedelta()
                 arrival_ips = set()
                 departure_ips = set()
