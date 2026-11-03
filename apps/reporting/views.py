@@ -410,7 +410,7 @@ class AnomalyListView(GlobalAccessRequiredMixin, View):
 
 # ============ Suivi quotidien (RH/DG) ============
 
-class DailyTrackingView(GlobalAccessRequiredMixin, View):
+class DailyTrackingView(DirecteurRequiredMixin, View):
     """Suivi des pointages : jour / mois / année / période libre.
 
     - jour  : liste détaillée (arrivée, départ, IPs, statut)
@@ -477,15 +477,25 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
         agence_id = request.GET.get('agence', '')
         direction_id = request.GET.get('direction', '')
 
-        employees = Employee.objects.filter(is_active=True).select_related(
-            'user', 'bureau__agence__mutuelle', 'direction',
-        )
+        # Scope selon le rôle :
+        # - RH / DG : accès global, tous filtres actifs
+        # - Directeur : limité aux employés de ses directions (filtre direction masqué)
+        is_global = request.user.has_global_access
+        if is_global:
+            employees = Employee.objects.filter(is_active=True).select_related(
+                'user', 'bureau__agence__mutuelle', 'direction',
+            )
+            if direction_id:
+                employees = employees.filter(direction_id=direction_id)
+        else:
+            # Directeur → périmètre restreint
+            employees = get_directeur_employees(request.user)
+            direction_id = ''  # filtre direction ignoré pour un directeur
+
         if mutuelle_id:
             employees = employees.filter(bureau__agence__mutuelle_id=mutuelle_id)
         if agence_id:
             employees = employees.filter(bureau__agence_id=agence_id)
-        if direction_id:
-            employees = employees.filter(direction_id=direction_id)
 
         entries_qs = TimeEntry.objects.filter(
             work_date__gte=start, work_date__lte=end,
@@ -561,17 +571,23 @@ class DailyTrackingView(GlobalAccessRequiredMixin, View):
         else:
             # Mode agrégé : compte les jours présents/absents sur la période.
             # Un jour n'est "attendu" que s'il est MANDATORY (ni samedi optionnel,
-            # ni dimanche, ni jour férié).
+            # ni dimanche, ni jour férié) ET s'il n'est pas dans le futur.
             from apps.reporting.services import is_day_expected
             entries_by_emp_map = {}
             for e in entries_qs:
                 entries_by_emp_map.setdefault(e.employee_id, []).append(e)
 
-            # Nombre de jours réellement attendus (obligatoires) sur la période.
-            total_workable_days = sum(
-                1 for i in range((end - start).days + 1)
-                if is_day_expected(start + timedelta(days=i))
-            )
+            # On cappe la borne haute à aujourd'hui : les jours futurs ne
+            # comptent pas comme "absence" (ils ne sont tout simplement pas encore arrivés).
+            today = timezone.localdate()
+            effective_end = min(end, today)
+            if effective_end < start:
+                total_workable_days = 0
+            else:
+                total_workable_days = sum(
+                    1 for i in range((effective_end - start).days + 1)
+                    if is_day_expected(start + timedelta(days=i))
+                )
 
             for emp in employees:
                 emp_entries = entries_by_emp_map.get(emp.pk, [])
@@ -777,10 +793,16 @@ class ExportStatsView(GlobalAccessRequiredMixin, View):
 
             # Nb jours travaillables sur la période (exclut dimanches)
             from apps.reporting.services import is_day_expected as _is_day_expected
-            total_workable = sum(
-                1 for i in range((end - start).days + 1)
-                if _is_day_expected(start + timedelta(days=i))
-            )
+            # Cap à aujourd'hui — pas de jours futurs comptés comme absents.
+            today = timezone.localdate()
+            effective_end = min(end, today)
+            if effective_end < start:
+                total_workable = 0
+            else:
+                total_workable = sum(
+                    1 for i in range((effective_end - start).days + 1)
+                    if _is_day_expected(start + timedelta(days=i))
+                )
 
             row_num = 4
             for emp in employees:

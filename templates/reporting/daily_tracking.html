@@ -103,13 +103,15 @@
       </select>
     </div>
 
-    <div class="col-md-2">
-      <label class="form-label small">Direction</label>
-      <select name="direction" class="form-select form-select-sm">
-        <option value="">Toutes</option>
-        {% for d in directions %}<option value="{{ d.pk }}" {% if filters.direction == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
-      </select>
-    </div>
+    {% if user_has_global_access %}
+      <div class="col-md-2">
+        <label class="form-label small">Direction</label>
+        <select name="direction" class="form-select form-select-sm">
+          <option value="">Toutes</option>
+          {% for d in directions %}<option value="{{ d.pk }}" {% if filters.direction == d.pk|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+        </select>
+      </div>
+    {% endif %}
 
     {% if period == 'jour' %}
     <div class="col-md-2">
@@ -124,9 +126,11 @@
 
     <div class="col-md-12 d-flex gap-2 mt-2">
       <button class="btn-acep" style="width:auto; padding:6px 14px;"><i class="bi bi-funnel"></i> Filtrer</button>
-      <a href="{% url 'reporting:export_stats' %}?type=daily_full&period={{ period }}&date={{ start|date:'Y-m-d' }}&start_date={{ start|date:'Y-m-d' }}&end_date={{ end|date:'Y-m-d' }}&year={{ year }}&month={{ month }}&mutuelle={{ filters.mutuelle }}&agence={{ filters.agence }}&direction={{ filters.direction }}" class="btn btn-outline-success btn-sm">
-        <i class="bi bi-file-earmark-excel"></i> Export Excel (présents + absents)
-      </a>
+      {% if user_has_global_access %}
+        <a href="{% url 'reporting:export_stats' %}?type=daily_full&period={{ period }}&date={{ start|date:'Y-m-d' }}&start_date={{ start|date:'Y-m-d' }}&end_date={{ end|date:'Y-m-d' }}&year={{ year }}&month={{ month }}&mutuelle={{ filters.mutuelle }}&agence={{ filters.agence }}&direction={{ filters.direction }}" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-file-earmark-excel"></i> Export Excel (présents + absents)
+        </a>
+      {% endif %}
     </div>
   </form>
 
@@ -144,8 +148,10 @@
           <th>Direction</th>
           <th>Arrivée</th>
           <th>Départ</th>
-          <th>IP arrivée</th>
-          <th>IP départ</th>
+          {% if user_has_global_access %}
+            <th>IP arrivée</th>
+            <th>IP départ</th>
+          {% endif %}
           <th>Statut</th>
         </tr>
         {% else %}
@@ -158,8 +164,10 @@
           <th>Jours pointés</th>
           <th>Jours absents</th>
           <th>Total heures</th>
-          <th>IPs arrivée</th>
-          <th>IPs départ</th>
+          {% if user_has_global_access %}
+            <th>IPs arrivée</th>
+            <th>IPs départ</th>
+          {% endif %}
         </tr>
         {% endif %}
       </thead>
@@ -174,8 +182,10 @@
             <td>{{ row.employee.direction.name }}</td>
             <td>{% if row.entry.arrival_time %}{{ row.entry.arrival_time|time:'H:i' }}{% else %}—{% endif %}</td>
             <td>{% if row.entry.departure_time %}{{ row.entry.departure_time|time:'H:i' }}{% else %}—{% endif %}</td>
-            <td>{% if row.entry.arrival_ip %}<code class="small">{{ row.entry.arrival_ip }}</code>{% else %}—{% endif %}</td>
-            <td>{% if row.entry.departure_ip %}<code class="small">{{ row.entry.departure_ip }}</code>{% else %}—{% endif %}</td>
+            {% if user_has_global_access %}
+              <td>{% if row.entry.arrival_ip %}<code class="small">{{ row.entry.arrival_ip }}</code>{% else %}—{% endif %}</td>
+              <td>{% if row.entry.departure_ip %}<code class="small">{{ row.entry.departure_ip }}</code>{% else %}—{% endif %}</td>
+            {% endif %}
             <td>
               {% if row.status == 'present' %}<span class="badge bg-success">Présent</span>
               {% elif row.status == 'on_break' %}<span class="badge bg-info">En pause</span>
@@ -194,12 +204,14 @@
             <td>{{ row.days_present }}</td>
             <td>{% if row.days_absent > 0 %}<span class="badge bg-warning text-dark">{{ row.days_absent }}</span>{% else %}0{% endif %}</td>
             <td><strong>{{ row.hours }}</strong></td>
-            <td>
-              {% for ip in row.arrival_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
-            </td>
-            <td>
-              {% for ip in row.departure_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
-            </td>
+            {% if user_has_global_access %}
+              <td>
+                {% for ip in row.arrival_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
+              </td>
+              <td>
+                {% for ip in row.departure_ips %}<code class="small d-block">{{ ip }}</code>{% empty %}—{% endfor %}
+              </td>
+            {% endif %}
           </tr>
           {% endif %}
         {% endfor %}

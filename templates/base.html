@@ -47,6 +47,11 @@
   <a href="{% url 'reporting:directeur_equipe' %}" class="{% if request.resolver_match.url_name == 'directeur_equipe' %}active{% endif %}">
     <i class="bi bi-people"></i><span>Mon équipe</span>
   </a>
+  {% if not user_has_global_access %}
+    <a href="{% url 'reporting:daily_tracking' %}" class="{% if request.resolver_match.url_name == 'daily_tracking' %}active{% endif %}">
+      <i class="bi bi-calendar-day"></i><span>Suivi quotidien</span>
+    </a>
+  {% endif %}
   <a href="{% url 'reporting:directeur_anomalies' %}" class="{% if request.resolver_match.url_name == 'directeur_anomalies' %}active{% endif %}">
     <i class="bi bi-exclamation-triangle"></i><span>Anomalies de l'équipe</span>
   </a>
