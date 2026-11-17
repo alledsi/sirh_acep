@@ -190,6 +190,129 @@ class EmployeeUpdateView(GlobalAccessRequiredMixin, FormView):
         return redirect('employees:employee_detail', pk=employee.pk)
 
 
+# ============ Export Excel de l'annuaire employés (RH/DG) ============
+
+class EmployeeExportView(GlobalAccessRequiredMixin, View):
+    """Export Excel complet de l'annuaire employés, en respectant les filtres actifs."""
+
+    def get(self, request):
+        import openpyxl
+        from openpyxl.styles import Alignment, Font, PatternFill
+
+        # Récupération des mêmes filtres que la liste
+        qs = Employee.objects.select_related(
+            'user', 'bureau__agence__mutuelle', 'direction',
+        ).order_by('user__matricule')
+
+        q = request.GET.get('q', '').strip()
+        mutuelle = request.GET.get('mutuelle')
+        agence = request.GET.get('agence')
+        bureau = request.GET.get('bureau')
+        direction = request.GET.get('direction')
+        role = request.GET.get('role')
+        statut = request.GET.get('statut', 'all')
+
+        if q:
+            qs = qs.filter(
+                models_q(user__matricule__icontains=q) |
+                models_q(user__first_name__icontains=q) |
+                models_q(user__last_name__icontains=q) |
+                models_q(user__email__icontains=q) |
+                models_q(position__icontains=q)
+            )
+        if mutuelle:
+            qs = qs.filter(bureau__agence__mutuelle_id=mutuelle)
+        if agence:
+            qs = qs.filter(bureau__agence_id=agence)
+        if bureau:
+            qs = qs.filter(bureau_id=bureau)
+        if direction:
+            qs = qs.filter(direction_id=direction)
+        if role:
+            qs = qs.filter(user__roles__contains=[role])
+        if statut == 'active':
+            qs = qs.filter(is_active=True)
+        elif statut == 'inactive':
+            qs = qs.filter(is_active=False)
+
+        # --- Workbook ---
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = 'Employes'
+
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='02564A', end_color='02564A', fill_type='solid')
+        title_font = Font(bold=True, size=14, color='02564A')
+
+        ws['A1'] = f"ACEP — Annuaire des employés ({qs.count()} enregistrement(s))"
+        ws['A1'].font = title_font
+
+        headers = [
+            'Matricule', 'Prénom', 'Nom', 'Email', 'Téléphone',
+            'Date de naissance', 'Date d\'embauche',
+            'Poste / Fonction',
+            'Mutuelle', 'Agence', 'Bureau', 'Code bureau',
+            'Direction', 'Code direction',
+            'Rôles', 'Compte actif', 'Employé actif',
+            'Mdp à changer', 'Date création',
+        ]
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+        ws['A1'].alignment = Alignment(horizontal='center')
+
+        for col, h in enumerate(headers, 1):
+            c = ws.cell(row=3, column=col, value=h)
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = Alignment(horizontal='center')
+
+        row_num = 4
+        for emp in qs:
+            u = emp.user
+            bureau_obj = emp.bureau
+            agence_obj = bureau_obj.agence if bureau_obj else None
+            mutuelle_obj = agence_obj.mutuelle if agence_obj else None
+            direction_obj = emp.direction
+
+            values = [
+                u.matricule,
+                u.first_name or '',
+                u.last_name or '',
+                u.email or '',
+                u.phone or '',
+                emp.birth_date.strftime('%d/%m/%Y') if emp.birth_date else '',
+                emp.hire_date.strftime('%d/%m/%Y') if emp.hire_date else '',
+                emp.position or '',
+                mutuelle_obj.name if mutuelle_obj else '',
+                agence_obj.name if agence_obj else '',
+                bureau_obj.name if bureau_obj else '',
+                bureau_obj.code if bureau_obj else '',
+                direction_obj.name if direction_obj else '',
+                direction_obj.code if direction_obj else '',
+                ', '.join(u.roles or []),
+                'Oui' if u.is_active else 'Non',
+                'Oui' if emp.is_active else 'Non',
+                'Oui' if u.must_change_password else 'Non',
+                emp.created_at.strftime('%d/%m/%Y') if emp.created_at else '',
+            ]
+            for col, v in enumerate(values, 1):
+                ws.cell(row=row_num, column=col, value=v)
+            row_num += 1
+
+        widths = [12, 18, 20, 32, 16, 14, 14, 26, 24, 22, 26, 14, 30, 14, 20, 12, 12, 14, 14]
+        for col, w in enumerate(widths, 1):
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+        from django.http import HttpResponse
+        from django.utils import timezone as _tz
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        stamp = _tz.localtime().strftime('%Y%m%d_%H%M')
+        response['Content-Disposition'] = f'attachment; filename="annuaire_employes_acep_{stamp}.xlsx"'
+        wb.save(response)
+        return response
+
+
 # ============ Réinitialisation mot de passe (RH/DG) ============
 
 class EmployeePasswordResetView(GlobalAccessRequiredMixin, View):

@@ -10,6 +10,7 @@ urlpatterns = [
     path('', views.EmployeeListView.as_view(), name='employee_list'),
     path('nouveau/', views.EmployeeCreateView.as_view(), name='employee_create'),
     path('import/', views.EmployeeImportView.as_view(), name='employee_import'),
+    path('export/', views.EmployeeExportView.as_view(), name='employee_export'),
     path('import/modele/', views.EmployeeImportTemplateView.as_view(), name='employee_import_template'),
     path('<int:pk>/', views.EmployeeDetailView.as_view(), name='employee_detail'),
     path('<int:pk>/modifier/', views.EmployeeUpdateView.as_view(), name='employee_update'),
